@@ -18,10 +18,10 @@ RUN pnpm install --no-frozen-lockfile
 COPY . .
 
 # Accept build args for Next.js public env vars
-ARG FRONTEND_URL
+ARG NEXT_PUBLIC_FRONTEND_URL
 
 # Set environment variables for build
-ENV FRONTEND_URL=$FRONTEND_URL
+ENV NEXT_PUBLIC_FRONTEND_URL=$NEXT_PUBLIC_FRONTEND_URL
 
 # Build the application
 RUN pnpm build
