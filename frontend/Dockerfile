@@ -1,5 +1,5 @@
 # Use Debian-based Node.js image (more reliable native module support than Alpine)
-FROM node:20-bullseye-slim
+FROM node:22-bookworm-slim
 
 # Set the working directory
 WORKDIR /app

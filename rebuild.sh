@@ -31,7 +31,7 @@ else
 
 	# Build and restart only app services
 	echo "Building app services..."
-	docker-compose up --build -d frontend
+	docker-compose up --build -d postgres frontend
 fi
 
 # Wait a moment for services to start
@@ -50,6 +50,7 @@ else
 	echo "Fast rebuild completed!"
 fi
 echo "========================================"
-echo "Frontend: http://localhost:3000"
+echo "Frontend:  http://localhost:3000"
+echo "Database:  postgres:5432"
 echo "========================================"
 echo
