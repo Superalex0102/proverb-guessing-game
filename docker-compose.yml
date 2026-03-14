@@ -1,0 +1,22 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - FRONTEND_URL=${FRONTEND_URL}
+    container_name: proverb-guessing-game-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - FRONTEND_URL=${FRONTEND_URL}
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  upload_data:

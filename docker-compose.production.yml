@@ -1,0 +1,198 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+        - NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}
+        - NEXT_PUBLIC_BING_SITE_VERIFICATION=${NEXT_PUBLIC_BING_SITE_VERIFICATION}
+    container_name: review-app-frontend-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+      - NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}
+      - NEXT_PUBLIC_BING_SITE_VERIFICATION=${NEXT_PUBLIC_BING_SITE_VERIFICATION}
+      - RELEASE_GHOST=${RELEASE_GHOST:-false}
+    networks:
+      - app-network
+    labels:
+      - "com.review-app.service=frontend"
+
+  admin-panel:
+    build:
+      context: ./admin-panel
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+    container_name: review-app-admin-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+    networks:
+      - app-network
+    labels:
+      - "com.review-app.service=admin"
+
+  backend:
+    build:
+      context: ./review-app
+      dockerfile: Dockerfile
+    container_name: review-app-backend-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      - db
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO:-validate}
+      - EMAIL_ENABLED=${EMAIL_ENABLED:-true}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_SMTP_AUTH=${MAIL_SMTP_AUTH}
+      - MAIL_SMTP_STARTTLS=${MAIL_SMTP_STARTTLS}
+      - MAIL_SMTP_SSL_ENABLE=${MAIL_SMTP_SSL_ENABLE:-false}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_REFRESH_SECRET_KEY=${JWT_REFRESH_SECRET_KEY}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - GEONAMES_USERNAME=${GEONAMES_USERNAME}
+      - UPLOAD_DIR=/app/uploads
+      - CAPTCHA_PROVIDER=${CAPTCHA_PROVIDER}
+      - CAPTCHA_SECRET=${CAPTCHA_SECRET}
+      - CAPTCHA_SITE_KEY=${CAPTCHA_SITE_KEY}
+      - COOKIE_SECURE=${COOKIE_SECURE:-true}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN}
+      - DOCUMENTS_STORAGE_PATH=/app/uploads/documents
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT:-WARN}
+      - LOGGING_LEVEL_APP=${LOGGING_LEVEL_APP:-INFO}
+    volumes:
+      # IMPORTANT: Use persistent volume for uploads in production
+      # Consider using cloud storage (S3, Azure Blob) instead
+      - upload_data:/app/uploads
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 5 bash -c '</dev/tcp/localhost/8080' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.review-app.service=backend"
+          
+  db:
+    image: 'postgres:16-alpine'
+    container_name: review-app-db-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups  # Bind mount - backups saved to host filesystem
+      # Optional: Custom PostgreSQL config for production
+      # - ./postgresql.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    labels:
+      - "com.review-app.service=database"
+
+  # Automated database backup service
+  db-backup:
+    image: postgres:16-alpine
+    container_name: review-app-db-backup
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=db
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - ./backups:/backups  # Bind mount - backups accessible on host
+      - ./scripts/backup-db.sh:/backup-db.sh:ro
+      - upload_data:/uploads:ro  # Mount uploads volume for backup
+    networks:
+      - app-network
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache dcron
+        # Run backup immediately on startup
+        /backup-db.sh
+        # Schedule hourly backups (at the top of every hour)
+        echo "0 * * * * /backup-db.sh" | crontab -
+        # Start cron in foreground
+        crond -f -l 2
+    labels:
+      - "com.review-app.service=backup"
+
+  # Optional: Add nginx as reverse proxy
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: review-app-nginx-prod
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - frontend
+  #     - admin-panel
+  #     - backend
+  #   networks:
+  #     - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  upload_data:
+    driver: local
+    # For production, consider using a cloud storage driver
+    # driver: rexray/s3fs
+    # driver_opts:
+    #   accessKey: ${AWS_ACCESS_KEY}
+    #   secretKey: ${AWS_SECRET_KEY}
+    #   region: ${AWS_REGION}
