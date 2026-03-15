@@ -3,25 +3,21 @@
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { isPlacedObjectArray, PlacedObject } from '@/lib/placed-object';
+import { getSocket } from '@/lib/socket';
+import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
+
 type ObjectCatalogItem = {
     id: string;
     name: string;
     src: string;
 };
 
-type PlacedObject = {
-    id: string;
-    objectId: string;
-    src: string;
-    name: string;
-    x: number;
-    y: number;
-};
-
 function createPlacedObjectId(objectId: string): string {
     return `${objectId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// TODO: We should read the whole folder from the backend, but for simplicity, we'll hardcode a few items here for now.
 const OBJECT_CATALOG: ObjectCatalogItem[] = [
     {
         id: 'diamond-sword',
@@ -40,16 +36,36 @@ export default function Page() {
     const sessionId = Array.isArray(params?.id) ? params.id[0] : params?.id;
     const [sessionExists, setSessionExists] = useState<boolean | null>(null);
     const [progress, setProgress] = useState(0);
-    const [status, setStatus] = useState<'lobby' | 'picking' | 'constructing' | 'finished'>('lobby');
+    const [status, setStatus] = useState<SessionPhase>('lobby');
     const [placedObjects, setPlacedObjects] = useState<PlacedObject[]>([]);
     const [draggingObjectId, setDraggingObjectId] = useState<string | null>(null);
     const constructionBoardRef = useRef<HTMLDivElement | null>(null);
+    const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
     const draggingObjectIdRef = useRef<string | null>(null);
     const draggingOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
     const PICKING_TIME = 10000;
     const CONSTRUCTING_TIME = 120000;
     const PLACED_OBJECT_SIZE = 80;
+
+    const syncPhase = useCallback(async (nextPhase: SessionPhase) => {
+        if (!sessionId) return;
+
+        setStatus(nextPhase);
+
+        await fetch(`/api/sessions/${sessionId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ phase: nextPhase })
+        });
+
+        socketRef.current?.emit('session:phase-changed', {
+            sessionId,
+            phase: nextPhase
+        });
+    }, [sessionId]);
 
     useEffect(() => {
         if (!sessionId) {
@@ -63,6 +79,12 @@ export default function Page() {
             const response = await fetch(`/api/sessions/${sessionId}`);
             if (!isCancelled) {
                 setSessionExists(response.ok);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (isSessionPhase(data?.session?.phase)) {
+                        setStatus(data.session.phase);
+                    }
+                }
             }
         }
 
@@ -76,6 +98,87 @@ export default function Page() {
             isCancelled = true;
         };
     }, [sessionId]);
+
+    useEffect(() => {
+        if (!sessionId || sessionExists !== true) return;
+
+        const socket = getSocket();
+        if (!socket) return;
+
+        socketRef.current = socket;
+
+        const joinRoom = () => {
+            socket.emit('session:join', sessionId);
+        };
+
+        const handlePhaseChange = (payload: { phase?: unknown }) => {
+            if (isSessionPhase(payload?.phase)) {
+                setStatus(payload.phase);
+            }
+        };
+
+        const handleObjectsUpdate = (payload: { objects?: unknown }) => {
+            if (isPlacedObjectArray(payload?.objects)) {
+                setPlacedObjects(payload.objects);
+            }
+        };
+
+        const handleSessionState = (payload: { phase?: unknown; objects?: unknown }) => {
+            if (isSessionPhase(payload?.phase)) {
+                setStatus(payload.phase);
+            }
+
+            if (isPlacedObjectArray(payload?.objects)) {
+                setPlacedObjects(payload.objects);
+            }
+        };
+
+        joinRoom();
+        socket.on('connect', joinRoom);
+        socket.on('session:phase-changed', handlePhaseChange);
+        socket.on('session:objects-updated', handleObjectsUpdate);
+        socket.on('session:state', handleSessionState);
+
+        return () => {
+            socket.off('connect', joinRoom);
+            socket.off('session:phase-changed', handlePhaseChange);
+            socket.off('session:objects-updated', handleObjectsUpdate);
+            socket.off('session:state', handleSessionState);
+        };
+    }, [sessionExists, sessionId]);
+
+    useEffect(() => {
+        if (!sessionId || sessionExists !== true || !socketRef.current) return;
+        if (status !== 'constructing') return;
+
+        const timeout = window.setTimeout(() => {
+            const board = constructionBoardRef.current;
+            if (!board) return;
+
+            const boardW = board.offsetWidth;
+            const boardH = board.offsetHeight;
+            if (boardW <= 0 || boardH <= 0) return;
+
+            const objectsWithPct = placedObjects.map((obj) => ({
+                ...obj,
+                xPct: (obj.x / boardW) * 100,
+                yPct: (obj.y / boardH) * 100,
+                sizeXPct: (PLACED_OBJECT_SIZE / boardW) * 100,
+                sizeYPct: (PLACED_OBJECT_SIZE / boardH) * 100,
+            }));
+
+            socketRef.current?.emit('session:objects-changed', {
+                sessionId,
+                objects: objectsWithPct,
+                boardWidth: boardW,
+                boardHeight: boardH,
+            });
+        }, 60);
+
+        return () => {
+            window.clearTimeout(timeout);
+        };
+    }, [placedObjects, sessionExists, sessionId, status]);
 
     useEffect(() => {
         if (sessionExists !== true) return;
@@ -93,21 +196,23 @@ export default function Page() {
 
             if (elapsed >= duration) {
                 clearInterval(interval);
-                if (status === 'picking') setStatus('constructing');
-                else if (status === 'constructing') setStatus('finished');
+                if (status === 'picking') {
+                    void syncPhase('constructing');
+                } else if (status === 'constructing') {
+                    void syncPhase('finished');
+                }
             }
         }, 100);
 
         return () => {
             clearInterval(interval);
         };
-    }, [sessionExists, status]);
+    }, [sessionExists, status, syncPhase]);
 
     const clampToBoard = useCallback((x: number, y: number) => {
         const board = constructionBoardRef.current;
         if (!board) return { x, y };
 
-        // Get actual dimensions
         const boardWidth = board.offsetWidth;
         const boardHeight = board.offsetHeight;
 
@@ -150,7 +255,6 @@ export default function Page() {
 
         const boardRect = board.getBoundingClientRect();
 
-        // Place the object so its center is under the cursor
         const x = event.clientX - boardRect.left - PLACED_OBJECT_SIZE / 2;
         const y = event.clientY - boardRect.top - PLACED_OBJECT_SIZE / 2;
 
@@ -160,13 +264,11 @@ export default function Page() {
         draggingObjectIdRef.current = newPlacedId;
         setDraggingObjectId(newPlacedId);
 
-        // The offset is the center of the object (where the cursor grabs it)
         draggingOffsetRef.current = {
             x: PLACED_OBJECT_SIZE / 2,
             y: PLACED_OBJECT_SIZE / 2,
         };
 
-        // Capture the pointer so move events keep firing even outside the button
         event.currentTarget.setPointerCapture(event.pointerId);
     };
 
@@ -177,11 +279,9 @@ export default function Page() {
 
             const boardRect = constructionBoardRef.current.getBoundingClientRect();
 
-            // Calculate where the cursor is relative to the board
             const mouseX = event.clientX - boardRect.left;
             const mouseY = event.clientY - boardRect.top;
 
-            // Subtract the offset (where you grabbed the item)
             const nextX = mouseX - draggingOffsetRef.current.x;
             const nextY = mouseY - draggingOffsetRef.current.y;
 
@@ -199,7 +299,6 @@ export default function Page() {
             setDraggingObjectId(null);
         };
 
-        // Global listeners ensure movement works even if the mouse leaves the object
         document.addEventListener('pointermove', handlePointerMove);
         document.addEventListener('pointerup', stopDragging);
         document.addEventListener('pointercancel', stopDragging);
@@ -211,11 +310,11 @@ export default function Page() {
             document.removeEventListener('pointercancel', stopDragging);
             window.removeEventListener('blur', stopDragging);
         };
-    }, [clampToBoard]); // Removed dependencies that cause unnecessary re-binds
+    }, [clampToBoard]);
 
     const startDraggingPlacedObject = (
         event: React.PointerEvent<HTMLButtonElement>,
-        item: PlacedObject, // Pass the whole item for easier access
+        item: PlacedObject,
     ) => {
         event.preventDefault();
 
@@ -227,7 +326,6 @@ export default function Page() {
         draggingObjectIdRef.current = item.id;
         setDraggingObjectId(item.id);
 
-        // Calculate exactly where the user clicked inside the object
         draggingOffsetRef.current = {
             x: event.clientX - boardRect.left - item.x,
             y: event.clientY - boardRect.top - item.y
@@ -271,7 +369,7 @@ export default function Page() {
                 <div className="text-center">
                     <button
                         type="button"
-                        onClick={() => setStatus('picking')}
+                        onClick={() => void syncPhase('picking')}
                         style={{
                             background: '#2563eb',
                             color: '#ffffff',
@@ -448,7 +546,7 @@ export default function Page() {
                         type="button"
                         onClick={() => {
                             setPlacedObjects([]);
-                            setStatus('lobby');
+                            void syncPhase('lobby');
                         }}
                         style={{
                             marginTop: '24px',
