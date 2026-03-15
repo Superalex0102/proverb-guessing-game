@@ -36,13 +36,28 @@ app.prepare().then(() => {
 
     socket.on('session:phase-changed', (payload) => {
       if (!payload || typeof payload !== 'object') return;
-      const { sessionId, phase, phaseEndAt } = payload;
+      const { sessionId, phase, phaseEndAt, currentProverb, proverbRerollsLeft } = payload;
       if (typeof sessionId !== 'string' || typeof phase !== 'string') return;
       if (!(phaseEndAt === null || typeof phaseEndAt === 'string' || typeof phaseEndAt === 'undefined')) return;
+      if (!(currentProverb === null || typeof currentProverb === 'string' || typeof currentProverb === 'undefined')) return;
+      if (!(typeof proverbRerollsLeft === 'number' || typeof proverbRerollsLeft === 'undefined')) return;
 
       const current = sessionState.get(sessionId) ?? { objects: [] };
-      sessionState.set(sessionId, { ...current, phase, phaseEndAt: phaseEndAt ?? null });
-      socket.to(sessionId).emit('session:phase-changed', { phase, phaseEndAt: phaseEndAt ?? null });
+      const nextState = {
+        ...current,
+        phase,
+        phaseEndAt: phaseEndAt ?? null,
+        currentProverb: currentProverb ?? null,
+        proverbRerollsLeft: typeof proverbRerollsLeft === 'number' ? proverbRerollsLeft : current.proverbRerollsLeft,
+      };
+
+      sessionState.set(sessionId, nextState);
+      socket.to(sessionId).emit('session:phase-changed', {
+        phase,
+        phaseEndAt: phaseEndAt ?? null,
+        currentProverb: currentProverb ?? null,
+        proverbRerollsLeft: typeof proverbRerollsLeft === 'number' ? proverbRerollsLeft : current.proverbRerollsLeft,
+      });
     });
 
     socket.on('session:objects-changed', (payload) => {

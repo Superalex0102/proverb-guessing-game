@@ -30,6 +30,10 @@ function isNullableString(value: unknown): value is string | null {
     return value === null || typeof value === 'string';
 }
 
+function isNumber(value: unknown): value is number {
+    return typeof value === 'number' && Number.isFinite(value);
+}
+
 export default function Page() {
     const params = useParams<{ id: string }>();
     const sessionId = Array.isArray(params?.id) ? params.id[0] : params?.id;
@@ -40,6 +44,8 @@ export default function Page() {
     const [phaseEndAt, setPhaseEndAt] = useState<string | null>(null);
     const [placedObjects, setPlacedObjects] = useState<PlacedObject[]>([]);
     const [draggingObjectId, setDraggingObjectId] = useState<string | null>(null);
+    const [currentProverb, setCurrentProverb] = useState<string | null>(null);
+    const [proverbRerollsLeft, setProverbRerollsLeft] = useState(3);
     const constructionBoardRef = useRef<HTMLDivElement | null>(null);
     const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
     const draggingObjectIdRef = useRef<string | null>(null);
@@ -89,20 +95,64 @@ export default function Page() {
 
         if (!response.ok) return;
 
-        const data: { session?: { phase?: unknown; phaseEndAt?: unknown } } = await response.json();
+        const data: { session?: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown } } = await response.json();
         if (!isSessionPhase(data?.session?.phase)) return;
 
         setStatus(data.session.phase);
         if (isNullableString(data.session.phaseEndAt)) {
             setPhaseEndAt(data.session.phaseEndAt);
         }
+        if (isNullableString(data.session.currentProverb)) {
+            setCurrentProverb(data.session.currentProverb);
+        }
+        if (isNumber(data.session.proverbRerollsLeft)) {
+            setProverbRerollsLeft(data.session.proverbRerollsLeft);
+        }
 
         socketRef.current?.emit('session:phase-changed', {
             sessionId,
             phase: data.session.phase,
             phaseEndAt: isNullableString(data.session.phaseEndAt) ? data.session.phaseEndAt : null,
+            currentProverb: isNullableString(data.session.currentProverb) ? data.session.currentProverb : null,
+            proverbRerollsLeft: isNumber(data.session.proverbRerollsLeft) ? data.session.proverbRerollsLeft : undefined,
         });
     }, [sessionId]);
+
+    const rerollProverb = useCallback(async () => {
+        if (!sessionId || status !== 'picking' || proverbRerollsLeft <= 0) return;
+
+        const response = await fetch(`/api/sessions/${sessionId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action: 'reroll-proverb' })
+        });
+
+        if (!response.ok) return;
+
+        const data: { session?: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown } } = await response.json();
+        if (!isSessionPhase(data?.session?.phase)) return;
+
+        setStatus(data.session.phase);
+        if (isNullableString(data.session.phaseEndAt)) {
+            setPhaseEndAt(data.session.phaseEndAt);
+        }
+        if (isNullableString(data.session.currentProverb)) {
+            setCurrentProverb(data.session.currentProverb);
+        }
+        if (isNumber(data.session.proverbRerollsLeft)) {
+            setProverbRerollsLeft(data.session.proverbRerollsLeft);
+        }
+
+        socketRef.current?.emit('session:phase-changed', {
+            sessionId,
+            phase: data.session.phase,
+            phaseEndAt: isNullableString(data.session.phaseEndAt) ? data.session.phaseEndAt : null,
+            currentProverb: isNullableString(data.session.currentProverb) ? data.session.currentProverb : null,
+            proverbRerollsLeft: isNumber(data.session.proverbRerollsLeft) ? data.session.proverbRerollsLeft : undefined,
+        });
+    }, [proverbRerollsLeft, sessionId, status]);
 
     useEffect(() => {
         if (!sessionId) {
@@ -117,12 +167,25 @@ export default function Page() {
             if (!isCancelled) {
                 setSessionExists(response.ok);
                 if (response.ok) {
-                    const data = await response.json();
+                    const data: {
+                        session?: {
+                            phase?: unknown;
+                            phaseEndAt?: unknown;
+                            currentProverb?: unknown;
+                            proverbRerollsLeft?: unknown;
+                        }
+                    } = await response.json();
                     if (isSessionPhase(data?.session?.phase)) {
                         setStatus(data.session.phase);
                     }
                     if (isNullableString(data?.session?.phaseEndAt)) {
                         setPhaseEndAt(data.session.phaseEndAt);
+                    }
+                    if (isNullableString(data?.session?.currentProverb)) {
+                        setCurrentProverb(data.session.currentProverb);
+                    }
+                    if (isNumber(data?.session?.proverbRerollsLeft)) {
+                        setProverbRerollsLeft(data.session.proverbRerollsLeft);
                     }
                 }
             }
@@ -151,12 +214,18 @@ export default function Page() {
             socket.emit('session:join', sessionId);
         };
 
-        const handlePhaseChange = (payload: { phase?: unknown; phaseEndAt?: unknown }) => {
+        const handlePhaseChange = (payload: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown }) => {
             if (isSessionPhase(payload?.phase)) {
                 setStatus(payload.phase);
             }
             if (isNullableString(payload?.phaseEndAt)) {
                 setPhaseEndAt(payload.phaseEndAt);
+            }
+            if (isNullableString(payload?.currentProverb)) {
+                setCurrentProverb(payload.currentProverb);
+            }
+            if (isNumber(payload?.proverbRerollsLeft)) {
+                setProverbRerollsLeft(payload.proverbRerollsLeft);
             }
         };
 
@@ -166,12 +235,18 @@ export default function Page() {
             }
         };
 
-        const handleSessionState = (payload: { phase?: unknown; phaseEndAt?: unknown; objects?: unknown }) => {
+        const handleSessionState = (payload: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown; objects?: unknown }) => {
             if (isSessionPhase(payload?.phase)) {
                 setStatus(payload.phase);
             }
             if (isNullableString(payload?.phaseEndAt)) {
                 setPhaseEndAt(payload.phaseEndAt);
+            }
+            if (isNullableString(payload?.currentProverb)) {
+                setCurrentProverb(payload.currentProverb);
+            }
+            if (isNumber(payload?.proverbRerollsLeft)) {
+                setProverbRerollsLeft(payload.proverbRerollsLeft);
             }
 
             if (isPlacedObjectArray(payload?.objects)) {
@@ -464,6 +539,19 @@ export default function Page() {
                         }}>
                             {status === 'picking' ? '🎲 Picking' : '🔨 Building'}
                         </span>
+                        {currentProverb && (
+                            <span style={{
+                                fontSize: '10px',
+                                color: '#64748b',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                maxWidth: '32vw',
+                                flexShrink: 1,
+                            }}>
+                                {currentProverb}
+                            </span>
+                        )}
                         {/* Progress bar fills remaining width */}
                         <div style={{
                             flex: 1,
@@ -524,16 +612,99 @@ export default function Page() {
                     <div style={{
                         flex: 1,
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        padding: '24px',
                     }}>
-                        <p style={{
-                            fontSize: '15px',
-                            color: '#475569',
-                            fontWeight: 500,
+                        <div style={{
+                            width: '100%',
+                            maxWidth: '480px',
+                            padding: '20px 20px 18px',
+                            borderRadius: '20px',
+                            background: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '14px',
                         }}>
-                            Picking a proverb…
-                        </p>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                justifyContent: 'space-between',
+                                gap: '12px',
+                            }}>
+                                <div>
+                                    <p style={{
+                                        margin: 0,
+                                        fontSize: '11px',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.08em',
+                                        color: '#94a3b8',
+                                        fontWeight: 700,
+                                    }}>
+                                        Picked proverb
+                                    </p>
+                                    <p style={{
+                                        margin: '6px 0 0',
+                                        fontSize: '14px',
+                                        color: '#64748b',
+                                    }}>
+                                        Trash remaining: {proverbRerollsLeft}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => void rerollProverb()}
+                                    disabled={proverbRerollsLeft <= 0}
+                                    aria-label="Pick a different proverb"
+                                    style={{
+                                        width: '34px',
+                                        height: '34px',
+                                        borderRadius: '9999px',
+                                        border: '1px solid #cbd5e1',
+                                        background: proverbRerollsLeft > 0 ? '#f8fafc' : '#e2e8f0',
+                                        color: proverbRerollsLeft > 0 ? '#475569' : '#94a3b8',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: proverbRerollsLeft > 0 ? 'pointer' : 'not-allowed',
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <path d="M3 6h18" />
+                                        <path d="M8 6V4h8v2" />
+                                        <path d="M19 6l-1 14H6L5 6" />
+                                        <path d="M10 11v6" />
+                                        <path d="M14 11v6" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div style={{
+                                minHeight: '120px',
+                                borderRadius: '16px',
+                                background: 'linear-gradient(135deg, #eff6ff, #f8fafc)',
+                                border: '1px solid #dbeafe',
+                                padding: '18px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                textAlign: 'center',
+                            }}>
+                                <p style={{
+                                    margin: 0,
+                                    fontSize: '22px',
+                                    lineHeight: 1.35,
+                                    fontWeight: 700,
+                                    color: '#0f172a',
+                                }}>
+                                    {currentProverb ?? 'Selecting a proverb...'}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -574,6 +745,27 @@ export default function Page() {
                             }}>
                                 Drag objects onto the board
                             </div>
+
+                            {currentProverb && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '38px',
+                                    left: '8px',
+                                    maxWidth: 'calc(100% - 16px)',
+                                    padding: '8px 10px',
+                                    borderRadius: '12px',
+                                    background: 'rgba(255,255,255,0.9)',
+                                    border: '1px solid #dbeafe',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: '#0f172a',
+                                    zIndex: 5,
+                                    backdropFilter: 'blur(4px)',
+                                    boxShadow: '0 8px 20px rgba(15, 23, 42, 0.08)',
+                                }}>
+                                    {currentProverb}
+                                </div>
+                            )}
 
                             {placedObjects.map((item) => (
                                 <button
@@ -704,6 +896,8 @@ export default function Page() {
                             type="button"
                             onClick={() => {
                                 setPlacedObjects([]);
+                                setCurrentProverb(null);
+                                setProverbRerollsLeft(3);
                                 void syncPhase('lobby');
                             }}
                             style={{
