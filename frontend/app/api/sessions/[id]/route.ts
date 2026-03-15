@@ -68,7 +68,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const proverbs = await getProverbs();
-    const nextProverb = pickRandomProverb(proverbs, session.currentProverb);
+    const nextProverb = pickRandomProverb(proverbs, [...session.usedProverbs, ...(session.currentProverb ? [session.currentProverb] : [])]);
     if (!nextProverb) {
       return NextResponse.json({ error: 'No proverbs available.' }, { status: 500 });
     }
@@ -98,16 +98,20 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   let currentProverb = existingSession.currentProverb;
   let proverbRerollsLeft = existingSession.proverbRerollsLeft;
+  let usedProverbs = existingSession.usedProverbs;
 
   if (body.phase === 'picking') {
     const proverbs = await getProverbs();
-    currentProverb = pickRandomProverb(proverbs);
+    currentProverb = pickRandomProverb(proverbs, usedProverbs);
     if (!currentProverb) {
       return NextResponse.json({ error: 'No proverbs available.' }, { status: 500 });
     }
     proverbRerollsLeft = MAX_PROVERB_REROLLS;
   } else if (body.phase === 'lobby') {
     currentProverb = null;
+        usedProverbs = [];
+      } else if (body.phase === 'constructing' && existingSession.currentProverb) {
+        usedProverbs = [...existingSession.usedProverbs, existingSession.currentProverb];
     proverbRerollsLeft = MAX_PROVERB_REROLLS;
   }
 
@@ -117,6 +121,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     getPhaseEndAt(body.phase),
     currentProverb,
     proverbRerollsLeft,
+    usedProverbs,
   );
   if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });

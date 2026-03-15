@@ -10,6 +10,7 @@ export type GameSession = {
   phaseEndAt: string | null;
   currentProverb: string | null;
   proverbRerollsLeft: number;
+  usedProverbs: string[];
 };
 
 type GameSessionRow = {
@@ -19,6 +20,7 @@ type GameSessionRow = {
   phase_end_at: string | null;
   current_proverb: string | null;
   proverb_rerolls_left: number;
+  used_proverbs: string[];
 };
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -62,6 +64,12 @@ function ensureSchema(): Promise<void> {
            ADD COLUMN IF NOT EXISTS proverb_rerolls_left INTEGER NOT NULL DEFAULT 3`,
         ),
       )
+      .then(() =>
+        pool.query(
+          `ALTER TABLE sessions
+           ADD COLUMN IF NOT EXISTS used_proverbs TEXT[] NOT NULL DEFAULT '{}'`,
+        ),
+      )
       .then(() => undefined);
   }
   return schemaReady;
@@ -75,6 +83,7 @@ function mapSessionRow(row: GameSessionRow): GameSession {
     phaseEndAt: row.phase_end_at,
     currentProverb: row.current_proverb,
     proverbRerollsLeft: row.proverb_rerolls_left,
+    usedProverbs: row.used_proverbs ?? [],
   };
 }
 
@@ -88,10 +97,10 @@ export async function createSession(): Promise<GameSession> {
   let row: GameSessionRow | undefined;
   while (!row) {
     const result = await pool.query<GameSessionRow>(
-      `INSERT INTO sessions (id, created_at, phase, phase_end_at, current_proverb, proverb_rerolls_left)
-       VALUES ($1, NOW(), 'lobby', NULL, NULL, 3)
+      `INSERT INTO sessions (id, created_at, phase, phase_end_at, current_proverb, proverb_rerolls_left, used_proverbs)
+       VALUES ($1, NOW(), 'lobby', NULL, NULL, 3, '{}')
        ON CONFLICT (id) DO NOTHING
-       RETURNING id, created_at, phase, phase_end_at, current_proverb, proverb_rerolls_left`,
+       RETURNING id, created_at, phase, phase_end_at, current_proverb, proverb_rerolls_left, used_proverbs`,
       [generateSessionId()],
     );
     row = result.rows[0];
@@ -104,7 +113,7 @@ export async function getSessionById(id: string): Promise<GameSession | null> {
   await ensureSchema();
 
   const result = await pool.query<GameSessionRow>(
-    'SELECT id, created_at, phase, phase_end_at, current_proverb, proverb_rerolls_left FROM sessions WHERE id = $1',
+    'SELECT id, created_at, phase, phase_end_at, current_proverb, proverb_rerolls_left, used_proverbs FROM sessions WHERE id = $1',
     [id],
   );
 
@@ -118,6 +127,7 @@ export async function updateSessionPhase(
   phaseEndAt: string | null,
   currentProverb: string | null,
   proverbRerollsLeft: number,
+  usedProverbs: string[],
 ): Promise<GameSession | null> {
   await ensureSchema();
 
@@ -126,10 +136,11 @@ export async function updateSessionPhase(
      SET phase = $2,
          phase_end_at = $3,
          current_proverb = $4,
-         proverb_rerolls_left = $5
+         proverb_rerolls_left = $5,
+         used_proverbs = $6
      WHERE id = $1
-     RETURNING id, created_at, phase, phase_end_at, current_proverb, proverb_rerolls_left`,
-    [id, phase, phaseEndAt, currentProverb, proverbRerollsLeft],
+     RETURNING id, created_at, phase, phase_end_at, current_proverb, proverb_rerolls_left, used_proverbs`,
+    [id, phase, phaseEndAt, currentProverb, proverbRerollsLeft, usedProverbs],
   );
 
   if (result.rows.length === 0) return null;
@@ -150,7 +161,7 @@ export async function updateSessionProverbState(
          proverb_rerolls_left = $3,
          phase_end_at = $4
      WHERE id = $1
-     RETURNING id, created_at, phase, phase_end_at, current_proverb, proverb_rerolls_left`,
+     RETURNING id, created_at, phase, phase_end_at, current_proverb, proverb_rerolls_left, used_proverbs`,
     [id, currentProverb, proverbRerollsLeft, phaseEndAt],
   );
 

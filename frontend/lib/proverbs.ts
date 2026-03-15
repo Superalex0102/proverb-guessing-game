@@ -11,10 +11,11 @@ export async function getProverbs(): Promise<string[]> {
     .filter((proverb) => proverb.length > 0);
 }
 
-export function pickRandomProverb(proverbs: string[], excludedProverb?: string | null): string | null {
+export function pickRandomProverb(proverbs: string[], excludedProverbs: string[] = []): string | null {
   if (proverbs.length === 0) return null;
 
-  const candidates = proverbs.filter((proverb) => proverb !== excludedProverb);
+  const excludedSet = new Set(excludedProverbs);
+  const candidates = proverbs.filter((proverb) => !excludedSet.has(proverb));
   const source = candidates.length > 0 ? candidates : proverbs;
   const index = Math.floor(Math.random() * source.length);
 
