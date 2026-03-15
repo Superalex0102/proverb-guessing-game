@@ -36,12 +36,13 @@ app.prepare().then(() => {
 
     socket.on('session:phase-changed', (payload) => {
       if (!payload || typeof payload !== 'object') return;
-      const { sessionId, phase } = payload;
+      const { sessionId, phase, phaseEndAt } = payload;
       if (typeof sessionId !== 'string' || typeof phase !== 'string') return;
+      if (!(phaseEndAt === null || typeof phaseEndAt === 'string' || typeof phaseEndAt === 'undefined')) return;
 
       const current = sessionState.get(sessionId) ?? { objects: [] };
-      sessionState.set(sessionId, { ...current, phase });
-      socket.to(sessionId).emit('session:phase-changed', { phase });
+      sessionState.set(sessionId, { ...current, phase, phaseEndAt: phaseEndAt ?? null });
+      socket.to(sessionId).emit('session:phase-changed', { phase, phaseEndAt: phaseEndAt ?? null });
     });
 
     socket.on('session:objects-changed', (payload) => {

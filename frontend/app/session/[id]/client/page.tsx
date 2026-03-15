@@ -17,26 +17,27 @@ function createPlacedObjectId(objectId: string): string {
     return `${objectId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// TODO: We should read the whole folder from the backend, but for simplicity, we'll hardcode a few items here for now.
-const OBJECT_CATALOG: ObjectCatalogItem[] = [
-    {
-        id: 'diamond-sword',
-        name: 'Diamond Sword',
-        src: '/images/objects/diamond_sword.png'
-    },
-    {
-        id: 'flint-and-steel',
-        name: 'Flint and Steel',
-        src: '/images/objects/Flint_and_Steel_JE4_BE2.png'
-    }
-];
+function isObjectCatalogItem(value: unknown): value is ObjectCatalogItem {
+    if (!value || typeof value !== 'object') return false;
+
+    const item = value as Record<string, unknown>;
+    return typeof item.id === 'string'
+        && typeof item.name === 'string'
+        && typeof item.src === 'string';
+}
+
+function isNullableString(value: unknown): value is string | null {
+    return value === null || typeof value === 'string';
+}
 
 export default function Page() {
     const params = useParams<{ id: string }>();
     const sessionId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+    const [objectCatalog, setObjectCatalog] = useState<ObjectCatalogItem[]>([]);
     const [sessionExists, setSessionExists] = useState<boolean | null>(null);
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState<SessionPhase>('lobby');
+    const [phaseEndAt, setPhaseEndAt] = useState<string | null>(null);
     const [placedObjects, setPlacedObjects] = useState<PlacedObject[]>([]);
     const [draggingObjectId, setDraggingObjectId] = useState<string | null>(null);
     const constructionBoardRef = useRef<HTMLDivElement | null>(null);
@@ -48,12 +49,37 @@ export default function Page() {
     const CONSTRUCTING_TIME = 120000;
     const PLACED_OBJECT_SIZE = 64;
 
+    useEffect(() => {
+        let isCancelled = false;
+
+        async function loadObjectCatalog() {
+            const response = await fetch('/api/objects');
+            if (!response.ok) return;
+
+            const data: { objects?: unknown } = await response.json();
+            if (!Array.isArray(data.objects)) return;
+
+            const objects = data.objects.filter(isObjectCatalogItem);
+            if (!isCancelled) {
+                setObjectCatalog(objects);
+            }
+        }
+
+        loadObjectCatalog().catch(() => {
+            if (!isCancelled) {
+                setObjectCatalog([]);
+            }
+        });
+
+        return () => {
+            isCancelled = true;
+        };
+    }, []);
+
     const syncPhase = useCallback(async (nextPhase: SessionPhase) => {
         if (!sessionId) return;
 
-        setStatus(nextPhase);
-
-        await fetch(`/api/sessions/${sessionId}`, {
+        const response = await fetch(`/api/sessions/${sessionId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json'
@@ -61,9 +87,20 @@ export default function Page() {
             body: JSON.stringify({ phase: nextPhase })
         });
 
+        if (!response.ok) return;
+
+        const data: { session?: { phase?: unknown; phaseEndAt?: unknown } } = await response.json();
+        if (!isSessionPhase(data?.session?.phase)) return;
+
+        setStatus(data.session.phase);
+        if (isNullableString(data.session.phaseEndAt)) {
+            setPhaseEndAt(data.session.phaseEndAt);
+        }
+
         socketRef.current?.emit('session:phase-changed', {
             sessionId,
-            phase: nextPhase
+            phase: data.session.phase,
+            phaseEndAt: isNullableString(data.session.phaseEndAt) ? data.session.phaseEndAt : null,
         });
     }, [sessionId]);
 
@@ -83,6 +120,9 @@ export default function Page() {
                     const data = await response.json();
                     if (isSessionPhase(data?.session?.phase)) {
                         setStatus(data.session.phase);
+                    }
+                    if (isNullableString(data?.session?.phaseEndAt)) {
+                        setPhaseEndAt(data.session.phaseEndAt);
                     }
                 }
             }
@@ -111,9 +151,12 @@ export default function Page() {
             socket.emit('session:join', sessionId);
         };
 
-        const handlePhaseChange = (payload: { phase?: unknown }) => {
+        const handlePhaseChange = (payload: { phase?: unknown; phaseEndAt?: unknown }) => {
             if (isSessionPhase(payload?.phase)) {
                 setStatus(payload.phase);
+            }
+            if (isNullableString(payload?.phaseEndAt)) {
+                setPhaseEndAt(payload.phaseEndAt);
             }
         };
 
@@ -123,9 +166,12 @@ export default function Page() {
             }
         };
 
-        const handleSessionState = (payload: { phase?: unknown; objects?: unknown }) => {
+        const handleSessionState = (payload: { phase?: unknown; phaseEndAt?: unknown; objects?: unknown }) => {
             if (isSessionPhase(payload?.phase)) {
                 setStatus(payload.phase);
+            }
+            if (isNullableString(payload?.phaseEndAt)) {
+                setPhaseEndAt(payload.phaseEndAt);
             }
 
             if (isPlacedObjectArray(payload?.objects)) {
@@ -184,30 +230,41 @@ export default function Page() {
         if (sessionExists !== true) return;
         if (status === 'lobby' || status === 'finished') return;
 
+        if (!phaseEndAt) {
+            setProgress(0);
+            return;
+        }
+
         const duration = status === 'picking' ? PICKING_TIME : CONSTRUCTING_TIME;
-        const startedAt = Date.now();
+        const endAtMs = Date.parse(phaseEndAt);
+        if (!Number.isFinite(endAtMs)) {
+            setProgress(0);
+            return;
+        }
 
-        setProgress(100);
-
-        const interval = setInterval(() => {
-            const elapsed = Date.now() - startedAt;
-            const nextProgress = Math.max(0, 100 - (elapsed / duration) * 100);
+        const updateProgress = () => {
+            const remaining = Math.max(0, endAtMs - Date.now());
+            const nextProgress = Math.max(0, (remaining / duration) * 100);
             setProgress(nextProgress);
 
-            if (elapsed >= duration) {
-                clearInterval(interval);
+            if (remaining === 0) {
                 if (status === 'picking') {
                     void syncPhase('constructing');
                 } else if (status === 'constructing') {
                     void syncPhase('finished');
                 }
             }
+        };
+
+        updateProgress();
+        const interval = setInterval(() => {
+            updateProgress();
         }, 100);
 
         return () => {
             clearInterval(interval);
         };
-    }, [sessionExists, status, syncPhase]);
+    }, [phaseEndAt, sessionExists, status, syncPhase]);
 
     const clampToBoard = useCallback((x: number, y: number) => {
         const board = constructionBoardRef.current;
@@ -226,7 +283,7 @@ export default function Page() {
     }, [PLACED_OBJECT_SIZE]);
 
     const addObjectToBoard = useCallback((objectId: string, x: number, y: number) => {
-        const object = OBJECT_CATALOG.find((item) => item.id === objectId);
+        const object = objectCatalog.find((item) => item.id === objectId);
         if (!object) return null;
 
         const clamped = clampToBoard(x, y);
@@ -244,7 +301,7 @@ export default function Page() {
             }
         ]);
         return placedId;
-    }, [clampToBoard]);
+    }, [clampToBoard, objectCatalog]);
 
     const startDraggingFromTray = (
         event: React.PointerEvent<HTMLButtonElement>,
@@ -583,7 +640,7 @@ export default function Page() {
                             }}>
                                 Items
                             </p>
-                            {OBJECT_CATALOG.map((item) => (
+                            {objectCatalog.map((item) => (
                                 <button
                                     key={item.id}
                                     type="button"
@@ -615,16 +672,6 @@ export default function Page() {
                                         }}
                                         draggable={false}
                                     />
-                                    <p style={{
-                                        margin: 0,
-                                        fontSize: '9px',
-                                        color: '#475569',
-                                        textAlign: 'center',
-                                        lineHeight: 1.2,
-                                        wordBreak: 'break-word',
-                                    }}>
-                                        {item.name}
-                                    </p>
                                 </button>
                             ))}
                         </aside>
