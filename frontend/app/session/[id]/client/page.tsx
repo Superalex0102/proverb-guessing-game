@@ -46,7 +46,7 @@ export default function Page() {
 
     const PICKING_TIME = 10000;
     const CONSTRUCTING_TIME = 120000;
-    const PLACED_OBJECT_SIZE = 80;
+    const PLACED_OBJECT_SIZE = 64;
 
     const syncPhase = useCallback(async (nextPhase: SessionPhase) => {
         if (!sessionId) return;
@@ -334,17 +334,33 @@ export default function Page() {
 
     if (sessionExists === null) {
         return (
-            <div className="flex min-h-screen items-center justify-center p-8">
-                <p>Loading session...</p>
+            <div style={{
+                display: 'flex',
+                height: '100dvh',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#f8fafc'
+            }}>
+                <p style={{ color: '#64748b', fontSize: '14px' }}>Loading session...</p>
             </div>
         );
     }
 
     if (!sessionExists) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
-                <h1 className="text-2xl font-semibold">Session not found</h1>
-                <p>Please ask the host to create a new game session.</p>
+            <div style={{
+                display: 'flex',
+                height: '100dvh',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '16px',
+                textAlign: 'center',
+                background: '#f8fafc'
+            }}>
+                <h1 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>Session not found</h1>
+                <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>Please ask the host to create a new game session.</p>
             </div>
         );
     }
@@ -353,216 +369,313 @@ export default function Page() {
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            minHeight: '100vh',
-            height: '100vh',
-            padding: '32px',
-            gap: '24px',
-            width: '100%',
-            background: '#f8fafc',
-            boxSizing: 'border-box'
+            height: '100dvh',
+            width: '100vw',
+            overflow: 'hidden',
+            background: '#f1f5f9',
+            boxSizing: 'border-box',
         }}>
-            <p className="text-sm text-slate-500">Session ID: {sessionId}</p>
+            {/* ── TOP BAR: session ID + progress bar ── */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 12px',
+                background: 'white',
+                borderBottom: '1px solid #e2e8f0',
+                flexShrink: 0,
+                minHeight: '36px',
+            }}>
+                <span style={{
+                    fontSize: '10px',
+                    color: '#94a3b8',
+                    whiteSpace: 'nowrap',
+                    fontFamily: 'monospace',
+                    flexShrink: 0,
+                }}>
+                    {sessionId}
+                </span>
 
-            {/* 1. LOBBY */}
-            {status === 'lobby' && (
-                <div className="text-center">
-                    <button
-                        type="button"
-                        onClick={() => void syncPhase('picking')}
-                        style={{
-                            background: '#2563eb',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '9999px',
-                            padding: '12px 24px',
+                {(status === 'picking' || status === 'constructing') && (
+                    <>
+                        <span style={{
+                            fontSize: '10px',
                             fontWeight: 600,
-                            cursor: 'pointer'
-                        }}
-                    >
-                        START
-                    </button>
-                </div>
-            )}
-
-            {/* 2. PROGRESS BAR */}
-            {/* Progress bar - fix width */}
-            {(status === 'picking' || status === 'constructing') && (
-                <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h2 style={{ fontSize: '24px', textAlign: 'center', fontWeight: 600, color: '#334155', margin: 0 }}>
-                        {status === 'picking' ? "Picking Proverb..." : "Construction in Progress..."}
-                    </h2>
-                    <div style={{
-                        width: '100%',
-                        height: '24px',
-                        backgroundColor: '#e2e8f0',
-                        border: '2px solid #334155',
-                        borderRadius: '9999px',
-                        overflow: 'hidden'
-                    }}>
+                            color: '#475569',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                        }}>
+                            {status === 'picking' ? '🎲 Picking' : '🔨 Building'}
+                        </span>
+                        {/* Progress bar fills remaining width */}
                         <div style={{
-                            width: `${progress}%`,
-                            height: '100%',
-                            transition: 'width 100ms linear',
-                            background: 'linear-gradient(to bottom, #4db6ac, #00796b)',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                            flex: 1,
+                            height: '10px',
+                            background: '#e2e8f0',
                             borderRadius: '9999px',
-                            position: 'relative'
+                            overflow: 'hidden',
+                            border: '1px solid #cbd5e1',
                         }}>
                             <div style={{
-                                position: 'absolute',
-                                top: '15%',
-                                left: '1%',
-                                width: '98%',
-                                height: '25%',
-                                background: 'rgba(255,255,255,0.3)',
-                                borderRadius: '9999px'
+                                width: `${progress}%`,
+                                height: '100%',
+                                transition: 'width 100ms linear',
+                                background: 'linear-gradient(to right, #4db6ac, #0d9488)',
+                                borderRadius: '9999px',
                             }} />
                         </div>
-                    </div>
-                </div>
-            )}
+                    </>
+                )}
+            </div>
 
-            {status === 'constructing' && (
-                <div style={{
-                    width: '100%',
-                    maxWidth: '1152px',
-                    flex: 1,
-                    minHeight: '460px',
-                    background: 'white',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '12px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'row'
-                }}>
-                    {/* Board FIRST (left) */}
-                    <div
-                        ref={constructionBoardRef}
-                        style={{
-                            flex: 1,
-                            position: 'relative',
-                            background: 'radial-gradient(circle at top left, #f8fafc, #e2e8f0)',
-                            touchAction: 'none'
-                        }}
-                    >
-                        <div style={{
-                            position: 'absolute',
-                            top: '12px',
-                            left: '12px',
-                            padding: '4px 12px',
-                            borderRadius: '9999px',
-                            background: 'rgba(255,255,255,0.8)',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '12px',
+            {/* ── MAIN CONTENT ── */}
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+
+                {/* LOBBY */}
+                {status === 'lobby' && (
+                    <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}>
+                        <button
+                            type="button"
+                            onClick={() => void syncPhase('picking')}
+                            style={{
+                                background: '#2563eb',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '9999px',
+                                padding: '14px 40px',
+                                fontSize: '18px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                letterSpacing: '0.05em',
+                                boxShadow: '0 4px 14px rgba(37,99,235,0.35)',
+                                minHeight: '52px',
+                                minWidth: '140px',
+                            }}
+                        >
+                            START
+                        </button>
+                    </div>
+                )}
+
+                {/* PICKING — full-screen centered message */}
+                {status === 'picking' && (
+                    <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}>
+                        <p style={{
+                            fontSize: '15px',
                             color: '#475569',
-                            zIndex: 5
+                            fontWeight: 500,
                         }}>
-                            Drag objects from the right menu and place them anywhere.
+                            Picking a proverb…
+                        </p>
+                    </div>
+                )}
+
+                {/* CONSTRUCTING — board + sidebar */}
+                {status === 'constructing' && (
+                    <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'row',
+                        overflow: 'hidden',
+                        minHeight: 0,
+                    }}>
+                        {/* Board */}
+                        <div
+                            ref={constructionBoardRef}
+                            style={{
+                                flex: 1,
+                                position: 'relative',
+                                background: 'radial-gradient(circle at top left, #f8fafc, #e2e8f0)',
+                                touchAction: 'none',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            {/* Hint label — compact for landscape phone */}
+                            <div style={{
+                                position: 'absolute',
+                                top: '6px',
+                                left: '8px',
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                background: 'rgba(255,255,255,0.85)',
+                                border: '1px solid #cbd5e1',
+                                fontSize: '10px',
+                                color: '#475569',
+                                zIndex: 5,
+                                pointerEvents: 'none',
+                                backdropFilter: 'blur(4px)',
+                            }}>
+                                Drag objects onto the board
+                            </div>
+
+                            {placedObjects.map((item) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    onPointerDown={(event) => startDraggingPlacedObject(event, item)}
+                                    style={{
+                                        left: item.x,
+                                        top: item.y,
+                                        width: `${PLACED_OBJECT_SIZE}px`,
+                                        height: `${PLACED_OBJECT_SIZE}px`,
+                                        touchAction: 'none',
+                                        zIndex: draggingObjectId === item.id ? 50 : 10,
+                                        position: 'absolute',
+                                        background: 'none',
+                                        border: 'none',
+                                        padding: 0,
+                                        cursor: 'grab',
+                                        borderRadius: '6px',
+                                        boxShadow: draggingObjectId === item.id
+                                            ? '0 0 0 2px #3b82f6, 0 8px 24px rgba(0,0,0,0.2)'
+                                            : 'none',
+                                    }}
+                                    aria-label={`Move ${item.name}`}
+                                >
+                                    <img
+                                        src={item.src}
+                                        alt={item.name}
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'contain',
+                                            pointerEvents: 'none',
+                                            userSelect: 'none',
+                                        }}
+                                        draggable={false}
+                                    />
+                                </button>
+                            ))}
                         </div>
 
-                        {placedObjects.map((item) => (
-                            <button
-                                key={item.id}
-                                type="button"
-                                onPointerDown={(event) => startDraggingPlacedObject(event, item)}
-                                style={{
-                                    left: item.x,
-                                    top: item.y,
-                                    width: `${PLACED_OBJECT_SIZE}px`,
-                                    height: `${PLACED_OBJECT_SIZE}px`,
-                                    touchAction: 'none',
-                                    zIndex: draggingObjectId === item.id ? 50 : 10,
-                                    position: 'absolute',
-                                    background: 'none',
-                                    border: 'none',
-                                    padding: 0,
-                                    cursor: 'grab',
-                                    borderRadius: '6px',
-                                    boxShadow: draggingObjectId === item.id ? '0 0 0 2px #3b82f6, 0 8px 24px rgba(0,0,0,0.2)' : 'none'
-                                }}
-                                aria-label={`Move ${item.name}`}
-                            >
-                                <img
-                                    src={item.src}
-                                    alt={item.name}
-                                    style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none', userSelect: 'none' }}
-                                    draggable={false}
-                                />
-                            </button>
-                        ))}
+                        {/* Sidebar — narrow column, scrollable, touch-friendly items */}
+                        <aside style={{
+                            width: '76px',
+                            flexShrink: 0,
+                            borderLeft: '1px solid #e2e8f0',
+                            background: '#f8fafc',
+                            padding: '8px 6px',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            WebkitOverflowScrolling: 'touch',
+                        }}>
+                            <p style={{
+                                fontSize: '9px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.06em',
+                                color: '#94a3b8',
+                                margin: 0,
+                                textAlign: 'center',
+                            }}>
+                                Items
+                            </p>
+                            {OBJECT_CATALOG.map((item) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    onPointerDown={(event) => startDraggingFromTray(event, item.id)}
+                                    style={{
+                                        width: '100%',
+                                        background: 'white',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '8px',
+                                        padding: '6px 4px 4px',
+                                        cursor: 'grab',
+                                        touchAction: 'none',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '2px',
+                                        minHeight: '60px',
+                                    }}
+                                >
+                                    <img
+                                        src={item.src}
+                                        alt={item.name}
+                                        style={{
+                                            width: '44px',
+                                            height: '44px',
+                                            objectFit: 'contain',
+                                            pointerEvents: 'none',
+                                            userSelect: 'none',
+                                        }}
+                                        draggable={false}
+                                    />
+                                    <p style={{
+                                        margin: 0,
+                                        fontSize: '9px',
+                                        color: '#475569',
+                                        textAlign: 'center',
+                                        lineHeight: 1.2,
+                                        wordBreak: 'break-word',
+                                    }}>
+                                        {item.name}
+                                    </p>
+                                </button>
+                            ))}
+                        </aside>
                     </div>
+                )}
 
-                    {/* Sidebar on the RIGHT */}
-                    <aside style={{
-                        width: '160px',
-                        flexShrink: 0,
-                        borderLeft: '1px solid #e2e8f0',
-                        background: '#f8fafc',
-                        padding: '16px',
-                        overflowY: 'auto',
+                {/* FINISHED */}
+                {status === 'finished' && (
+                    <div style={{
+                        flex: 1,
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '12px'
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '12px',
+                        padding: '16px',
                     }}>
-                        <h3 style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', margin: 0 }}>
-                            Objects
-                        </h3>
-                        {OBJECT_CATALOG.map((item) => (
-                            <button
-                                key={item.id}
-                                type="button"
-                                onPointerDown={(event) => startDraggingFromTray(event, item.id)}
-                                style={{
-                                    width: '100%',
-                                    background: 'white',
-                                    border: '1px solid #cbd5e1',
-                                    borderRadius: '8px',
-                                    padding: '8px',
-                                    cursor: 'grab',
-                                    touchAction: 'none'
-                                }}
-                            >
-                                <img
-                                    src={item.src}
-                                    alt={item.name}
-                                    style={{ width: '100%', height: '80px', objectFit: 'contain', pointerEvents: 'none', userSelect: 'none' }}
-                                    draggable={false}
-                                />
-                                <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#475569', textAlign: 'center' }}>{item.name}</p>
-                            </button>
-                        ))}
-                    </aside>
-                </div>
-            )}
-
-            {/* 3. FINISHED */}
-            {status === 'finished' && (
-                <div className="text-center animate-appearance-in">
-                    <h1 className="text-4xl font-bold text-teal-600">Finished!</h1>
-                    <p className="mt-4 text-slate-600">The process is complete.</p>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setPlacedObjects([]);
-                            void syncPhase('lobby');
-                        }}
-                        style={{
-                            marginTop: '24px',
-                            background: '#e2e8f0',
-                            color: '#0f172a',
-                            border: '1px solid #94a3b8',
-                            borderRadius: '9999px',
-                            padding: '10px 20px',
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Következő közmondás
-                    </button>
-                </div>
-            )}
+                        <h1 style={{
+                            fontSize: '28px',
+                            fontWeight: 700,
+                            color: '#0d9488',
+                            margin: 0,
+                        }}>
+                            Kész! 🎉
+                        </h1>
+                        <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
+                            The round is complete.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setPlacedObjects([]);
+                                void syncPhase('lobby');
+                            }}
+                            style={{
+                                background: '#e2e8f0',
+                                color: '#0f172a',
+                                border: '1px solid #94a3b8',
+                                borderRadius: '9999px',
+                                padding: '10px 24px',
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                minHeight: '44px',
+                            }}
+                        >
+                            Következő közmondás
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
