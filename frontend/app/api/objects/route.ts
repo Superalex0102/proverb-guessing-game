@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-const ALLOWED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
+const ALLOWED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg']);
 
 export async function GET() {
   const objectsDir = path.join(process.cwd(), 'public', 'images', 'objects');

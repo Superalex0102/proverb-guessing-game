@@ -10,6 +10,7 @@ import { getSocket } from '@/lib/socket';
 import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
 
 export default function Page() {
+    const TV_OBJECT_SCALE = 3;
     const params = useParams<{ id: string }>();
     const [sessionExists, setSessionExists] = useState<boolean | null>(null);
     const [phase, setPhase] = useState<SessionPhase>('lobby');
@@ -173,11 +174,11 @@ export default function Page() {
                                         left,
                                         top,
                                         width: item.sizeXPct !== undefined
-                                            ? `${item.sizeXPct}%`
-                                            : (item.sizePct !== undefined ? `${item.sizePct}%` : '80px'),
+                                            ? `${item.sizeXPct * TV_OBJECT_SCALE}%`
+                                            : (item.sizePct !== undefined ? `${item.sizePct * TV_OBJECT_SCALE}%` : '240px'),
                                         height: item.sizeYPct !== undefined
-                                            ? `${item.sizeYPct}%`
-                                            : (item.sizePct !== undefined ? `${item.sizePct}%` : '80px'),
+                                            ? `${item.sizeYPct * TV_OBJECT_SCALE}%`
+                                            : (item.sizePct !== undefined ? `${item.sizePct * TV_OBJECT_SCALE}%` : '240px'),
                                     }}
                                     draggable={false}
                                 />
