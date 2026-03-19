@@ -10,7 +10,7 @@ import { getSocket } from '@/lib/socket';
 import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
 
 export default function Page() {
-    const TV_OBJECT_SCALE = 3;
+    const TV_OBJECT_SCALE = 1;
     const params = useParams<{ id: string }>();
     const [sessionExists, setSessionExists] = useState<boolean | null>(null);
     const [phase, setPhase] = useState<SessionPhase>('lobby');

@@ -53,7 +53,7 @@ export default function Page() {
 
     const PICKING_TIME = 10000;
     const CONSTRUCTING_TIME = 120000;
-    const PLACED_OBJECT_SIZE = 64;
+    const PLACED_OBJECT_SIZE = 160;
 
     useEffect(() => {
         let isCancelled = false;
@@ -809,20 +809,20 @@ export default function Page() {
 
                         {/* Sidebar — narrow column, scrollable, touch-friendly items */}
                         <aside style={{
-                            width: '76px',
+                            width: '120px',
                             flexShrink: 0,
                             borderLeft: '1px solid #e2e8f0',
                             background: '#f8fafc',
-                            padding: '8px 6px',
+                            padding: '10px 8px',
                             overflowY: 'auto',
                             overflowX: 'hidden',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '8px',
+                            gap: '10px',
                             WebkitOverflowScrolling: 'touch',
                         }}>
                             <p style={{
-                                fontSize: '9px',
+                                fontSize: '10px',
                                 fontWeight: 700,
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.06em',
@@ -841,23 +841,23 @@ export default function Page() {
                                         width: '100%',
                                         background: 'white',
                                         border: '1px solid #cbd5e1',
-                                        borderRadius: '8px',
-                                        padding: '6px 4px 4px',
+                                        borderRadius: '12px',
+                                        padding: '8px 6px 6px',
                                         cursor: 'grab',
                                         touchAction: 'none',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         gap: '2px',
-                                        minHeight: '60px',
+                                        minHeight: '90px',
                                     }}
                                 >
                                     <img
                                         src={item.src}
                                         alt={item.name}
                                         style={{
-                                            width: '44px',
-                                            height: '44px',
+                                            width: '76px',
+                                            height: '76px',
                                             objectFit: 'contain',
                                             pointerEvents: 'none',
                                             userSelect: 'none',
