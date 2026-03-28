@@ -808,7 +808,7 @@ export default function Page() {
 
                         {/* Sidebar — narrow column, scrollable, touch-friendly items */}
                         <aside style={{
-                            width: '120px',
+                            width: '220px',
                             flexShrink: 0,
                             borderLeft: '1px solid #e2e8f0',
                             background: '#f8fafc',
@@ -820,51 +820,50 @@ export default function Page() {
                             gap: '10px',
                             WebkitOverflowScrolling: 'touch',
                         }}>
-                            <p style={{
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.06em',
-                                color: '#94a3b8',
-                                margin: 0,
-                                textAlign: 'center',
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                                gap: '8px',
                             }}>
-                                Items
-                            </p>
-                            {objectCatalog.map((item) => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    onPointerDown={(event) => startDraggingFromTray(event, item.id)}
-                                    style={{
-                                        width: '100%',
-                                        background: 'white',
-                                        border: '1px solid #cbd5e1',
-                                        borderRadius: '12px',
-                                        padding: '8px 6px 6px',
-                                        cursor: 'grab',
-                                        touchAction: 'none',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: '2px',
-                                        minHeight: '90px',
-                                    }}
-                                >
-                                    <img
-                                        src={item.src}
-                                        alt={item.name}
+                                {objectCatalog.map((item, index) => (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onPointerDown={(event) => startDraggingFromTray(event, item.id)}
                                         style={{
-                                            width: '76px',
-                                            height: '76px',
-                                            objectFit: 'contain',
-                                            pointerEvents: 'none',
-                                            userSelect: 'none',
+                                            width: '100%',
+                                            backgroundColor: 'transparent',
+                                            backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
+                                            backgroundRepeat: 'no-repeat',
+                                            backgroundPosition: 'center',
+                                            backgroundSize: '100% 100%',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            padding: '8px 6px',
+                                            cursor: 'grab',
+                                            touchAction: 'none',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '2px',
+                                            minHeight: '96px',
                                         }}
-                                        draggable={false}
-                                    />
-                                </button>
-                            ))}
+                                    >
+                                        <img
+                                            src={item.src}
+                                            alt={item.name}
+                                            style={{
+                                                width: '72px',
+                                                height: '72px',
+                                                objectFit: 'contain',
+                                                pointerEvents: 'none',
+                                                userSelect: 'none',
+                                            }}
+                                            draggable={false}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
                         </aside>
                     </div>
                 )}
