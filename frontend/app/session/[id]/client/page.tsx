@@ -552,20 +552,26 @@ export default function Page() {
                                 {currentProverb}
                             </span>
                         )}
-                        {/* Progress bar fills remaining width */}
+                        {/* SVG timeline base + custom fill */}
                         <div style={{
                             flex: 1,
-                            height: '10px',
-                            background: '#e2e8f0',
-                            borderRadius: '9999px',
+                            height: '30px',
+                            position: 'relative',
                             overflow: 'hidden',
-                            border: '1px solid #cbd5e1',
+                            borderRadius: '9999px',
+                            backgroundImage: "url('/images/ui/2perc_timeline-32.svg')",
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            backgroundSize: '100% 100%',
                         }}>
                             <div style={{
-                                width: `${progress}%`,
-                                height: '100%',
+                                position: 'absolute',
+                                left: '2px',
+                                top: '9px',
+                                bottom: '9px',
+                                width: `calc((100% - 6px) * ${progress / 100})`,
                                 transition: 'width 100ms linear',
-                                background: 'linear-gradient(to right, #4db6ac, #0d9488)',
+                                background: '#0d9488',
                                 borderRadius: '9999px',
                             }} />
                         </div>
@@ -588,18 +594,20 @@ export default function Page() {
                             type="button"
                             onClick={() => void syncPhase('picking')}
                             style={{
-                                background: '#2563eb',
-                                color: '#ffffff',
+                                backgroundColor: 'transparent',
+                                backgroundImage: "url('/images/ui/button.svg')",
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'center',
+                                backgroundSize: '100% 100%',
+                                color: '#0f172a',
                                 border: 'none',
-                                borderRadius: '9999px',
-                                padding: '14px 40px',
-                                fontSize: '18px',
+                                padding: '12px 36px',
+                                fontSize: '24px',
                                 fontWeight: 700,
                                 cursor: 'pointer',
                                 letterSpacing: '0.05em',
-                                boxShadow: '0 4px 14px rgba(37,99,235,0.35)',
-                                minHeight: '52px',
-                                minWidth: '140px',
+                                minHeight: '78px',
+                                minWidth: '280px',
                             }}
                         >
                             START
@@ -618,77 +626,18 @@ export default function Page() {
                         padding: '24px',
                     }}>
                         <div style={{
-                            width: '100%',
-                            maxWidth: '480px',
-                            padding: '20px 20px 18px',
-                            borderRadius: '20px',
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
-                            boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '14px',
+                            width: 'min(88vw, 1160px)',
+                            padding: 0,
+                            position: 'relative',
                         }}>
                             <div style={{
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                justifyContent: 'space-between',
-                                gap: '12px',
-                            }}>
-                                <div>
-                                    <p style={{
-                                        margin: 0,
-                                        fontSize: '11px',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.08em',
-                                        color: '#94a3b8',
-                                        fontWeight: 700,
-                                    }}>
-                                        Picked proverb
-                                    </p>
-                                    <p style={{
-                                        margin: '6px 0 0',
-                                        fontSize: '14px',
-                                        color: '#64748b',
-                                    }}>
-                                        Trash remaining: {proverbRerollsLeft}
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => void rerollProverb()}
-                                    disabled={proverbRerollsLeft <= 0}
-                                    aria-label="Pick a different proverb"
-                                    style={{
-                                        width: '34px',
-                                        height: '34px',
-                                        borderRadius: '9999px',
-                                        border: '1px solid #cbd5e1',
-                                        background: proverbRerollsLeft > 0 ? '#f8fafc' : '#e2e8f0',
-                                        color: proverbRerollsLeft > 0 ? '#475569' : '#94a3b8',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: proverbRerollsLeft > 0 ? 'pointer' : 'not-allowed',
-                                        flexShrink: 0,
-                                    }}
-                                >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                        <path d="M3 6h18" />
-                                        <path d="M8 6V4h8v2" />
-                                        <path d="M19 6l-1 14H6L5 6" />
-                                        <path d="M10 11v6" />
-                                        <path d="M14 11v6" />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <div style={{
-                                minHeight: '120px',
+                                minHeight: '138px',
                                 borderRadius: '16px',
-                                background: 'linear-gradient(135deg, #eff6ff, #f8fafc)',
-                                border: '1px solid #dbeafe',
-                                padding: '18px',
+                                backgroundImage: "url('/images/ui/epites_kozben_kozmondas.svg')",
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'center',
+                                backgroundSize: '100% 100%',
+                                padding: '22px 140px 22px 36px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -696,14 +645,36 @@ export default function Page() {
                             }}>
                                 <p style={{
                                     margin: 0,
-                                    fontSize: '22px',
-                                    lineHeight: 1.35,
+                                    fontSize: 'clamp(26px, 3vw, 56px)',
+                                    lineHeight: 1.15,
                                     fontWeight: 700,
                                     color: '#0f172a',
                                 }}>
                                     {currentProverb ?? 'Selecting a proverb...'}
                                 </p>
                             </div>
+
+                            <button
+                                type="button"
+                                onClick={() => void rerollProverb()}
+                                disabled={proverbRerollsLeft <= 0}
+                                aria-label="Pick a different proverb"
+                                style={{
+                                    width: '72px',
+                                    height: '72px',
+                                    border: 'none',
+                                    backgroundColor: 'transparent',
+                                    backgroundImage: "url('/images/ui/mondat_kiikszelogomb.svg')",
+                                    backgroundRepeat: 'no-repeat',
+                                    backgroundPosition: 'center',
+                                    backgroundSize: '100% 100%',
+                                    cursor: proverbRerollsLeft > 0 ? 'pointer' : 'not-allowed',
+                                    opacity: proverbRerollsLeft > 0 ? 1 : 0.65,
+                                    position: 'absolute',
+                                    right: '-18px',
+                                    top: '28px',
+                                }}
+                            />
                         </div>
                     </div>
                 )}
@@ -754,7 +725,10 @@ export default function Page() {
                                     maxWidth: 'calc(100% - 16px)',
                                     padding: '8px 10px',
                                     borderRadius: '12px',
-                                    background: 'rgba(255,255,255,0.9)',
+                                    backgroundImage: "url('/images/ui/epites_kozben_kozmondas.svg')",
+                                    backgroundRepeat: 'no-repeat',
+                                    backgroundPosition: 'center',
+                                    backgroundSize: '100% 100%',
                                     border: '1px solid #dbeafe',
                                     fontSize: '12px',
                                     fontWeight: 600,
@@ -901,15 +875,19 @@ export default function Page() {
                                 void syncPhase('lobby');
                             }}
                             style={{
-                                background: '#e2e8f0',
+                                backgroundColor: 'transparent',
+                                backgroundImage: "url('/images/ui/button.svg')",
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'center',
+                                backgroundSize: '100% 100%',
                                 color: '#0f172a',
-                                border: '1px solid #94a3b8',
-                                borderRadius: '9999px',
-                                padding: '10px 24px',
-                                fontSize: '14px',
-                                fontWeight: 600,
+                                border: 'none',
+                                padding: '12px 28px',
+                                fontSize: '18px',
+                                fontWeight: 700,
                                 cursor: 'pointer',
-                                minHeight: '44px',
+                                minHeight: '72px',
+                                minWidth: '320px',
                             }}
                         >
                             Következő közmondás

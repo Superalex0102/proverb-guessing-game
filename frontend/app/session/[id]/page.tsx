@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Code, Link } from '@nextui-org/react';
+import { Code, Link } from '@nextui-org/react';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -196,13 +196,27 @@ export default function Page() {
                     </div>
 
                     <div className="flex flex-col items-center gap-4">
-                        <Button
-                            size="sm"
-                            variant="flat"
-                            onPress={() => setShowLink(!showLink)}
+                        <button
+                            type="button"
+                            onClick={() => setShowLink(!showLink)}
+                            style={{
+                                minHeight: '62px',
+                                minWidth: '320px',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                backgroundImage: "url('/images/ui/button.svg')",
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'center',
+                                backgroundSize: '100% 100%',
+                                padding: '12px 32px',
+                                fontSize: '18px',
+                                fontWeight: 700,
+                                color: '#0f172a',
+                                cursor: 'pointer',
+                            }}
                         >
                             {showLink ? 'Hide Link' : "Can't scan the QR code?"}
-                        </Button>
+                        </button>
 
                         {showLink && (
                             <div className="flex flex-col items-center gap-2 animate-appearance-in">

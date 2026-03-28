@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@nextui-org/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -40,13 +39,30 @@ export default function Page() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8">
       <h1>Hello, welcome to Proverb Guessing Game!</h1>
-      <Button
-        onPress={createSession}
-        isLoading={isCreating}
-        color="primary"
+      <button
+        type="button"
+        onClick={() => void createSession()}
+        disabled={isCreating}
+        aria-busy={isCreating}
+        style={{
+          minHeight: '78px',
+          minWidth: '360px',
+          border: 'none',
+          backgroundColor: 'transparent',
+          backgroundImage: "url('/images/ui/button.svg')",
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          backgroundSize: '100% 100%',
+          padding: '16px 40px',
+          fontSize: '24px',
+          fontWeight: 700,
+          color: '#0f172a',
+          cursor: isCreating ? 'not-allowed' : 'pointer',
+          opacity: isCreating ? 0.8 : 1,
+        }}
       >
-        Generate a random game session
-      </Button>
+        {isCreating ? 'Creating session...' : 'Generate a random game session'}
+      </button>
       {error && <p className="text-danger text-sm">{error}</p>}
     </div>
   );
