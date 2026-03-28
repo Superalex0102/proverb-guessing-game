@@ -341,6 +341,28 @@ export default function Page() {
         };
     }, [phaseEndAt, sessionExists, status, syncPhase]);
 
+    useEffect(() => {
+        const html = document.documentElement;
+        const body = document.body;
+
+        const prevHtmlOverflow = html.style.overflow;
+        const prevHtmlOverscroll = html.style.overscrollBehavior;
+        const prevBodyOverflow = body.style.overflow;
+        const prevBodyOverscroll = body.style.overscrollBehavior;
+
+        html.style.overflow = 'hidden';
+        html.style.overscrollBehavior = 'none';
+        body.style.overflow = 'hidden';
+        body.style.overscrollBehavior = 'none';
+
+        return () => {
+            html.style.overflow = prevHtmlOverflow;
+            html.style.overscrollBehavior = prevHtmlOverscroll;
+            body.style.overflow = prevBodyOverflow;
+            body.style.overscrollBehavior = prevBodyOverscroll;
+        };
+    }, []);
+
     const clampToBoard = useCallback((x: number, y: number) => {
         const board = constructionBoardRef.current;
         if (!board) return { x, y };
@@ -501,9 +523,12 @@ export default function Page() {
         <div style={{
             display: 'flex',
             flexDirection: 'column',
+            position: 'fixed',
+            inset: 0,
             height: '100dvh',
             width: '100vw',
             overflow: 'hidden',
+            overscrollBehavior: 'none',
             background: '#f1f5f9',
             boxSizing: 'border-box',
         }}>
