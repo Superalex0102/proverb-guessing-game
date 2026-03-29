@@ -13,6 +13,13 @@ type ObjectCatalogItem = {
     src: string;
 };
 
+type VisibleBounds = {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+};
+    
 function createPlacedObjectId(objectId: string): string {
     return `${objectId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -50,10 +57,104 @@ export default function Page() {
     const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
     const draggingObjectIdRef = useRef<string | null>(null);
     const draggingOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    const objectVisibleBoundsRef = useRef<Record<string, VisibleBounds>>({});
+    // Cache of off-screen canvases keyed by object src, used for pixel hit-testing
+    const objectCanvasRef = useRef<Record<string, HTMLCanvasElement>>({});
 
     const PICKING_TIME = 10000;
     const CONSTRUCTING_TIME = 120000;
-    const PLACED_OBJECT_SIZE = 160;
+    const PLACED_OBJECT_SIZE = 240;
+    const SIDEBAR_PREVIEW_SIZE = 72;
+
+    const getDefaultVisibleBounds = useCallback((): VisibleBounds => ({
+        minX: 0,
+        maxX: PLACED_OBJECT_SIZE - 1,
+        minY: 0,
+        maxY: PLACED_OBJECT_SIZE - 1,
+    }), [PLACED_OBJECT_SIZE]);
+
+    const measureVisibleBounds = useCallback((src: string): Promise<VisibleBounds | null> => {
+        return new Promise((resolve) => {
+            const image = new Image();
+
+            image.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = PLACED_OBJECT_SIZE;
+                canvas.height = PLACED_OBJECT_SIZE;
+
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    resolve(null);
+                    return;
+                }
+
+                ctx.clearRect(0, 0, PLACED_OBJECT_SIZE, PLACED_OBJECT_SIZE);
+
+                const scale = Math.min(
+                    PLACED_OBJECT_SIZE / image.naturalWidth,
+                    PLACED_OBJECT_SIZE / image.naturalHeight,
+                );
+
+                const drawWidth = image.naturalWidth * scale;
+                const drawHeight = image.naturalHeight * scale;
+                const drawX = (PLACED_OBJECT_SIZE - drawWidth) / 2;
+                const drawY = (PLACED_OBJECT_SIZE - drawHeight) / 2;
+
+                ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+
+                // Keep the canvas around for later pixel hit-testing
+                objectCanvasRef.current[src] = canvas;
+
+                const pixels = ctx.getImageData(0, 0, PLACED_OBJECT_SIZE, PLACED_OBJECT_SIZE).data;
+
+                let minX = PLACED_OBJECT_SIZE;
+                let minY = PLACED_OBJECT_SIZE;
+                let maxX = -1;
+                let maxY = -1;
+
+                for (let y = 0; y < PLACED_OBJECT_SIZE; y += 1) {
+                    for (let x = 0; x < PLACED_OBJECT_SIZE; x += 1) {
+                        const alpha = pixels[(y * PLACED_OBJECT_SIZE + x) * 4 + 3];
+                        if (alpha <= 16) continue;
+
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+
+                if (maxX < 0 || maxY < 0) {
+                    resolve(null);
+                    return;
+                }
+
+                resolve({ minX, maxX, minY, maxY });
+            };
+
+            image.onerror = () => resolve(null);
+            image.src = src;
+        });
+    }, [PLACED_OBJECT_SIZE]);
+
+    /**
+     * Returns true if the pixel at (localX, localY) within the object's
+     * 240×240 canvas has an alpha value above the threshold (i.e. is visible).
+     */
+    const isOpaquePixel = useCallback((src: string, localX: number, localY: number): boolean => {
+        const canvas = objectCanvasRef.current[src];
+        if (!canvas) return true; // canvas not ready — allow drag as fallback
+
+        const x = Math.round(localX);
+        const y = Math.round(localY);
+        if (x < 0 || y < 0 || x >= PLACED_OBJECT_SIZE || y >= PLACED_OBJECT_SIZE) return false;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return true;
+
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        return pixel[3] > 16; // alpha threshold matching measureVisibleBounds
+    }, [PLACED_OBJECT_SIZE]);
 
     useEffect(() => {
         let isCancelled = false;
@@ -81,6 +182,34 @@ export default function Page() {
             isCancelled = true;
         };
     }, []);
+
+    useEffect(() => {
+        if (objectCatalog.length === 0) {
+            objectVisibleBoundsRef.current = {};
+            return;
+        }
+
+        let isCancelled = false;
+
+        const loadVisibleBounds = async () => {
+            const measured = await Promise.all(
+                objectCatalog.map(async (item) => {
+                    const bounds = await measureVisibleBounds(item.src);
+                    return [item.id, bounds ?? getDefaultVisibleBounds()] as const;
+                }),
+            );
+
+            if (isCancelled) return;
+
+            objectVisibleBoundsRef.current = Object.fromEntries(measured);
+        };
+
+        void loadVisibleBounds();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [getDefaultVisibleBounds, measureVisibleBounds, objectCatalog]);
 
     const syncPhase = useCallback(async (nextPhase: SessionPhase) => {
         if (!sessionId) return;
@@ -363,27 +492,31 @@ export default function Page() {
         };
     }, []);
 
-    const clampToBoard = useCallback((x: number, y: number) => {
+    const clampToBoard = useCallback((objectId: string, x: number, y: number) => {
         const board = constructionBoardRef.current;
         if (!board) return { x, y };
 
         const boardWidth = board.offsetWidth;
         const boardHeight = board.offsetHeight;
 
-        const maxX = boardWidth - PLACED_OBJECT_SIZE;
-        const maxY = boardHeight - PLACED_OBJECT_SIZE;
+        const visibleBounds = objectVisibleBoundsRef.current[objectId] ?? getDefaultVisibleBounds();
+
+        const minX = -visibleBounds.minX;
+        const minY = -visibleBounds.minY;
+        const maxX = boardWidth - visibleBounds.maxX - 1;
+        const maxY = boardHeight - visibleBounds.maxY - 1;
 
         return {
-            x: Math.max(0, Math.min(x, maxX)),
-            y: Math.max(0, Math.min(y, maxY))
+            x: Math.max(minX, Math.min(x, maxX)),
+            y: Math.max(minY, Math.min(y, maxY))
         };
-    }, [PLACED_OBJECT_SIZE]);
+    }, [getDefaultVisibleBounds]);
 
     const addObjectToBoard = useCallback((objectId: string, x: number, y: number) => {
         const object = objectCatalog.find((item) => item.id === objectId);
         if (!object) return null;
 
-        const clamped = clampToBoard(x, y);
+        const clamped = clampToBoard(object.id, x, y);
         const placedId = createPlacedObjectId(object.id);
 
         setPlacedObjects((prev) => [
@@ -439,13 +572,16 @@ export default function Page() {
             const nextX = mouseX - draggingOffsetRef.current.x;
             const nextY = mouseY - draggingOffsetRef.current.y;
 
-            const clamped = clampToBoard(nextX, nextY);
+            setPlacedObjects((prev) => {
+                const activeObject = prev.find((item) => item.id === activeId);
+                if (!activeObject) return prev;
 
-            setPlacedObjects((prev) =>
-                prev.map((item) =>
+                const clamped = clampToBoard(activeObject.objectId, nextX, nextY);
+
+                return prev.map((item) =>
                     item.id === activeId ? { ...item, x: clamped.x, y: clamped.y } : item
-                )
-            );
+                );
+            });
         };
 
         const stopDragging = () => {
@@ -467,8 +603,7 @@ export default function Page() {
     }, [clampToBoard]);
 
     const startDraggingPlacedObject = (
-        event: React.PointerEvent<HTMLButtonElement>,
-        item: PlacedObject,
+        event: React.PointerEvent<HTMLDivElement>,
     ) => {
         event.preventDefault();
 
@@ -476,13 +611,25 @@ export default function Page() {
         if (!board) return;
 
         const boardRect = board.getBoundingClientRect();
+        const pointerX = event.clientX - boardRect.left;
+        const pointerY = event.clientY - boardRect.top;
 
-        draggingObjectIdRef.current = item.id;
-        setDraggingObjectId(item.id);
+        // Walk placed objects from topmost (last in array = highest z-index) to bottom,
+        // and pick the first one whose pixel under the pointer is opaque.
+        const hit = [...placedObjects].reverse().find((item) => {
+            const localX = pointerX - item.x;
+            const localY = pointerY - item.y;
+            return isOpaquePixel(item.src, localX, localY);
+        });
+
+        if (!hit) return;
+
+        draggingObjectIdRef.current = hit.id;
+        setDraggingObjectId(hit.id);
 
         draggingOffsetRef.current = {
-            x: event.clientX - boardRect.left - item.x,
-            y: event.clientY - boardRect.top - item.y
+            x: pointerX - hit.x,
+            y: pointerY - hit.y,
         };
     };
 
@@ -493,7 +640,7 @@ export default function Page() {
                 height: '100dvh',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: '#f8fafc'
+                background: '#dbf5f9'
             }}>
                 <p style={{ color: '#64748b', fontSize: '14px' }}>Loading session...</p>
             </div>
@@ -511,7 +658,7 @@ export default function Page() {
                 gap: '8px',
                 padding: '16px',
                 textAlign: 'center',
-                background: '#f8fafc'
+                background: '#dbf5f9'
             }}>
                 <h1 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>Session not found</h1>
                 <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>Please ask the host to create a new game session.</p>
@@ -529,7 +676,7 @@ export default function Page() {
             width: '100vw',
             overflow: 'hidden',
             overscrollBehavior: 'none',
-            background: '#f1f5f9',
+            background: '#dbf5f9',
             boxSizing: 'border-box',
         }}>
             {/* ── TOP BAR: session ID + progress bar ── */}
@@ -685,8 +832,8 @@ export default function Page() {
                                 disabled={proverbRerollsLeft <= 0}
                                 aria-label="Pick a different proverb"
                                 style={{
-                                    width: '72px',
-                                    height: '72px',
+                                    width: '48px',
+                                    height: '48px',
                                     border: 'none',
                                     backgroundColor: 'transparent',
                                     backgroundImage: "url('/images/ui/mondat_kiikszelogomb.svg')",
@@ -696,8 +843,8 @@ export default function Page() {
                                     cursor: proverbRerollsLeft > 0 ? 'pointer' : 'not-allowed',
                                     opacity: proverbRerollsLeft > 0 ? 1 : 0.65,
                                     position: 'absolute',
-                                    right: '-18px',
-                                    top: '28px',
+                                    right: '8px',
+                                    top: '38px',
                                 }}
                             />
                         </div>
@@ -716,10 +863,11 @@ export default function Page() {
                         {/* Board */}
                         <div
                             ref={constructionBoardRef}
+                            onPointerDown={startDraggingPlacedObject}
                             style={{
                                 flex: 1,
                                 position: 'relative',
-                                background: 'radial-gradient(circle at top left, #f8fafc, #e2e8f0)',
+                                background: '#dbf5f9',
                                 touchAction: 'none',
                                 overflow: 'hidden',
                             }}
@@ -767,26 +915,16 @@ export default function Page() {
                             )}
 
                             {placedObjects.map((item) => (
-                                <button
+                                <div
                                     key={item.id}
-                                    type="button"
-                                    onPointerDown={(event) => startDraggingPlacedObject(event, item)}
                                     style={{
                                         left: item.x,
                                         top: item.y,
                                         width: `${PLACED_OBJECT_SIZE}px`,
                                         height: `${PLACED_OBJECT_SIZE}px`,
-                                        touchAction: 'none',
                                         zIndex: draggingObjectId === item.id ? 50 : 10,
                                         position: 'absolute',
-                                        background: 'none',
-                                        border: 'none',
-                                        padding: 0,
-                                        cursor: 'grab',
-                                        borderRadius: '6px',
-                                        boxShadow: draggingObjectId === item.id
-                                            ? '0 0 0 2px #3b82f6, 0 8px 24px rgba(0,0,0,0.2)'
-                                            : 'none',
+                                        pointerEvents: 'none',
                                     }}
                                     aria-label={`Move ${item.name}`}
                                 >
@@ -799,10 +937,13 @@ export default function Page() {
                                             objectFit: 'contain',
                                             pointerEvents: 'none',
                                             userSelect: 'none',
+                                            filter: draggingObjectId === item.id
+                                                ? 'drop-shadow(1px 0 0 #3b82f6) drop-shadow(-1px 0 0 #3b82f6) drop-shadow(0 1px 0 #3b82f6) drop-shadow(0 -1px 0 #3b82f6) drop-shadow(0 8px 24px rgba(0,0,0,0.2))'
+                                                : 'none',
                                         }}
                                         draggable={false}
                                     />
-                                </button>
+                                </div>
                             ))}
                         </div>
 
@@ -811,7 +952,7 @@ export default function Page() {
                             width: '220px',
                             flexShrink: 0,
                             borderLeft: '1px solid #e2e8f0',
-                            background: '#f8fafc',
+                            background: '#dbf5f9',
                             padding: '10px 8px',
                             overflowY: 'auto',
                             overflowX: 'hidden',
@@ -825,44 +966,69 @@ export default function Page() {
                                 gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
                                 gap: '8px',
                             }}>
-                                {objectCatalog.map((item, index) => (
-                                    <button
-                                        key={item.id}
-                                        type="button"
-                                        onPointerDown={(event) => startDraggingFromTray(event, item.id)}
-                                        style={{
-                                            width: '100%',
-                                            backgroundColor: 'transparent',
-                                            backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
-                                            backgroundRepeat: 'no-repeat',
-                                            backgroundPosition: 'center',
-                                            backgroundSize: '100% 100%',
-                                            border: 'none',
-                                            borderRadius: '12px',
-                                            padding: '8px 6px',
-                                            cursor: 'grab',
-                                            touchAction: 'none',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '2px',
-                                            minHeight: '96px',
-                                        }}
-                                    >
-                                        <img
-                                            src={item.src}
-                                            alt={item.name}
+                                {objectCatalog.map((item, index) => {
+                                    const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds();
+                                    const contentWidth = Math.max(1, visibleBounds.maxX - visibleBounds.minX + 1);
+                                    const contentHeight = Math.max(1, visibleBounds.maxY - visibleBounds.minY + 1);
+                                    const sidebarScale = Math.max(
+                                        1,
+                                        Math.min(
+                                            3.5,
+                                            Math.min(
+                                                (PLACED_OBJECT_SIZE * 0.86) / contentWidth,
+                                                (PLACED_OBJECT_SIZE * 0.86) / contentHeight,
+                                            ),
+                                        ),
+                                    );
+
+                                    const contentCenterX = (visibleBounds.minX + visibleBounds.maxX) / 2;
+                                    const contentCenterY = (visibleBounds.minY + visibleBounds.maxY) / 2;
+                                    const baseCenter = PLACED_OBJECT_SIZE / 2;
+                                    const offsetX = ((baseCenter - contentCenterX) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
+                                    const offsetY = ((baseCenter - contentCenterY) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
+
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onPointerDown={(event) => startDraggingFromTray(event, item.id)}
                                             style={{
-                                                width: '72px',
-                                                height: '72px',
-                                                objectFit: 'contain',
-                                                pointerEvents: 'none',
-                                                userSelect: 'none',
+                                                width: '100%',
+                                                backgroundColor: 'transparent',
+                                                backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
+                                                backgroundRepeat: 'no-repeat',
+                                                backgroundPosition: 'center',
+                                                backgroundSize: '100% 100%',
+                                                border: 'none',
+                                                borderRadius: '12px',
+                                                padding: '8px 6px',
+                                                cursor: 'grab',
+                                                touchAction: 'none',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '2px',
+                                                minHeight: '96px',
+                                                overflow: 'hidden',
                                             }}
-                                            draggable={false}
-                                        />
-                                    </button>
-                                ))}
+                                        >
+                                            <img
+                                                src={item.src}
+                                                alt={item.name}
+                                                style={{
+                                                    width: `${SIDEBAR_PREVIEW_SIZE}px`,
+                                                    height: `${SIDEBAR_PREVIEW_SIZE}px`,
+                                                    objectFit: 'contain',
+                                                    pointerEvents: 'none',
+                                                    userSelect: 'none',
+                                                    transform: `translate(${offsetX}px, ${offsetY}px) scale(${sidebarScale})`,
+                                                    transformOrigin: 'center center',
+                                                }}
+                                                draggable={false}
+                                            />
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </aside>
                     </div>

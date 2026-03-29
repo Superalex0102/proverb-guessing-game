@@ -115,11 +115,36 @@ export default function Page() {
         };
     }, [sessionExists, sessionId]);
 
+    useEffect(() => {
+        const html = document.documentElement;
+        const body = document.body;
+
+        const prevHtmlOverflow = html.style.overflow;
+        const prevHtmlOverscroll = html.style.overscrollBehavior;
+        const prevBodyOverflow = body.style.overflow;
+        const prevBodyOverscroll = body.style.overscrollBehavior;
+        const prevBodyMargin = body.style.margin;
+
+        html.style.overflow = 'hidden';
+        html.style.overscrollBehavior = 'none';
+        body.style.overflow = 'hidden';
+        body.style.overscrollBehavior = 'none';
+        body.style.margin = '0';
+
+        return () => {
+            html.style.overflow = prevHtmlOverflow;
+            html.style.overscrollBehavior = prevHtmlOverscroll;
+            body.style.overflow = prevBodyOverflow;
+            body.style.overscrollBehavior = prevBodyOverscroll;
+            body.style.margin = prevBodyMargin;
+        };
+    }, []);
+
 
 
     if (sessionExists === null) {
         return (
-            <div className="flex min-h-screen items-center justify-center p-8">
+            <div className="fixed inset-0 flex items-center justify-center overflow-hidden p-8">
                 <p>Loading session...</p>
             </div>
         );
@@ -127,7 +152,7 @@ export default function Page() {
 
     if (!sessionExists) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8">
+            <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 overflow-hidden p-8">
                 <h1 className="text-2xl font-semibold">Session not found</h1>
                 <p>Please generate a new session from the home page.</p>
                 <Link href="/">Go back</Link>
@@ -138,7 +163,8 @@ export default function Page() {
     const isGameActive = phase !== 'lobby';
 
     return (
-        <div className="flex flex-col items-center gap-6 p-8">
+        <div className="fixed inset-0 overflow-hidden">
+            <div className="flex h-full flex-col items-center gap-6 overflow-hidden p-8">
             <h1>Session: {sessionId}</h1>
             <p className="text-default-600">
                 Current phase: <strong>{phase}</strong>
@@ -229,6 +255,7 @@ export default function Page() {
                     </div>
                 </>
             )}
+            </div>
         </div>
     );
 }
