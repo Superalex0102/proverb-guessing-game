@@ -19,7 +19,7 @@ type VisibleBounds = {
     minY: number;
     maxY: number;
 };
-    
+
 function createPlacedObjectId(objectId: string): string {
     return `${objectId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -51,6 +51,7 @@ export default function Page() {
     const [phaseEndAt, setPhaseEndAt] = useState<string | null>(null);
     const [placedObjects, setPlacedObjects] = useState<PlacedObject[]>([]);
     const [draggingObjectId, setDraggingObjectId] = useState<string | null>(null);
+    const [lastSelectedObjectId, setLastSelectedObjectId] = useState<string | null>(null);
     const [currentProverb, setCurrentProverb] = useState<string | null>(null);
     const [proverbRerollsLeft, setProverbRerollsLeft] = useState(3);
     const constructionBoardRef = useRef<HTMLDivElement | null>(null);
@@ -471,6 +472,14 @@ export default function Page() {
     }, [phaseEndAt, sessionExists, status, syncPhase]);
 
     useEffect(() => {
+        if (!lastSelectedObjectId) return;
+        const stillExists = placedObjects.some((item) => item.id === lastSelectedObjectId);
+        if (!stillExists) {
+            setLastSelectedObjectId(null);
+        }
+    }, [lastSelectedObjectId, placedObjects]);
+
+    useEffect(() => {
         const html = document.documentElement;
         const body = document.body;
 
@@ -548,6 +557,7 @@ export default function Page() {
         const newPlacedId = addObjectToBoard(objectId, x, y);
         if (!newPlacedId) return;
 
+        setLastSelectedObjectId(newPlacedId);
         draggingObjectIdRef.current = newPlacedId;
         setDraggingObjectId(newPlacedId);
 
@@ -624,6 +634,7 @@ export default function Page() {
 
         if (!hit) return;
 
+        setLastSelectedObjectId(hit.id);
         draggingObjectIdRef.current = hit.id;
         setDraggingObjectId(hit.id);
 
@@ -679,78 +690,6 @@ export default function Page() {
             background: '#dbf5f9',
             boxSizing: 'border-box',
         }}>
-            {/* ── TOP BAR: session ID + progress bar ── */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '6px 12px',
-                background: 'white',
-                borderBottom: '1px solid #e2e8f0',
-                flexShrink: 0,
-                minHeight: '36px',
-            }}>
-                <span style={{
-                    fontSize: '10px',
-                    color: '#94a3b8',
-                    whiteSpace: 'nowrap',
-                    fontFamily: 'monospace',
-                    flexShrink: 0,
-                }}>
-                    {sessionId}
-                </span>
-
-                {(status === 'picking' || status === 'constructing') && (
-                    <>
-                        <span style={{
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            color: '#475569',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                        }}>
-                            {status === 'picking' ? '🎲 Picking' : '🔨 Building'}
-                        </span>
-                        {currentProverb && (
-                            <span style={{
-                                fontSize: '10px',
-                                color: '#64748b',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                maxWidth: '32vw',
-                                flexShrink: 1,
-                            }}>
-                                {currentProverb}
-                            </span>
-                        )}
-                        {/* SVG timeline base + custom fill */}
-                        <div style={{
-                            flex: 1,
-                            height: '30px',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            borderRadius: '9999px',
-                            backgroundImage: "url('/images/ui/2perc_timeline-32.svg')",
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'center',
-                            backgroundSize: '100% 100%',
-                        }}>
-                            <div style={{
-                                position: 'absolute',
-                                left: '2px',
-                                top: '9px',
-                                bottom: '9px',
-                                width: `calc((100% - 6px) * ${progress / 100})`,
-                                transition: 'width 100ms linear',
-                                background: '#0d9488',
-                                borderRadius: '9999px',
-                            }} />
-                        </div>
-                    </>
-                )}
-            </div>
-
             {/* ── MAIN CONTENT ── */}
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
@@ -771,6 +710,7 @@ export default function Page() {
                                 backgroundRepeat: 'no-repeat',
                                 backgroundPosition: 'center',
                                 backgroundSize: '100% 100%',
+                                justifyContent: 'center',
                                 color: '#0f172a',
                                 border: 'none',
                                 padding: '12px 36px',
@@ -796,27 +736,56 @@ export default function Page() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         padding: '24px',
+                        position: 'relative',
                     }}>
+                        <div style={{
+                            position: 'absolute',
+                            top: '8px',
+                            left: '8px',
+                            right: '8px',
+                            height: '30px',
+                            overflow: 'hidden',
+                            borderRadius: '9999px',
+                            backgroundImage: "url('/images/ui/2perc_timeline-32.svg')",
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            backgroundSize: '100% 100%',
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                left: '2px',
+                                top: '9px',
+                                bottom: '9px',
+                                width: `calc((100% - 6px) * ${progress / 100})`,
+                                transition: 'width 100ms linear',
+                                background: '#0d9488',
+                                borderRadius: '9999px',
+                            }} />
+                        </div>
+
                         <div style={{
                             width: 'min(88vw, 1160px)',
                             padding: 0,
                             position: 'relative',
                         }}>
                             <div style={{
-                                minHeight: '138px',
+                                minHeight: '220px',
                                 borderRadius: '16px',
-                                backgroundImage: "url('/images/ui/epites_kozben_kozmondas.svg')",
+                                backgroundImage: "url('/images/ui/kozmondasos_panel.svg')",
                                 backgroundRepeat: 'no-repeat',
                                 backgroundPosition: 'center',
                                 backgroundSize: '100% 100%',
-                                padding: '22px 140px 22px 36px',
+                                padding: '28px 104px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 textAlign: 'center',
+                                position: 'relative',
                             }}>
                                 <p style={{
                                     margin: 0,
+                                    width: '100%',
+                                    textAlign: 'center',
                                     fontSize: 'clamp(26px, 3vw, 56px)',
                                     lineHeight: 1.15,
                                     fontWeight: 700,
@@ -824,29 +793,29 @@ export default function Page() {
                                 }}>
                                     {currentProverb ?? 'Selecting a proverb...'}
                                 </p>
-                            </div>
 
-                            <button
-                                type="button"
-                                onClick={() => void rerollProverb()}
-                                disabled={proverbRerollsLeft <= 0}
-                                aria-label="Pick a different proverb"
-                                style={{
-                                    width: '48px',
-                                    height: '48px',
-                                    border: 'none',
-                                    backgroundColor: 'transparent',
-                                    backgroundImage: "url('/images/ui/mondat_kiikszelogomb.svg')",
-                                    backgroundRepeat: 'no-repeat',
-                                    backgroundPosition: 'center',
-                                    backgroundSize: '100% 100%',
-                                    cursor: proverbRerollsLeft > 0 ? 'pointer' : 'not-allowed',
-                                    opacity: proverbRerollsLeft > 0 ? 1 : 0.65,
-                                    position: 'absolute',
-                                    right: '8px',
-                                    top: '38px',
-                                }}
-                            />
+                                <button
+                                    type="button"
+                                    onClick={() => void rerollProverb()}
+                                    disabled={proverbRerollsLeft <= 0}
+                                    aria-label="Pick a different proverb"
+                                    style={{
+                                        width: '48px',
+                                        height: '48px',
+                                        border: 'none',
+                                        backgroundColor: 'transparent',
+                                        backgroundImage: "url('/images/ui/mondat_kiikszelogomb.svg')",
+                                        backgroundRepeat: 'no-repeat',
+                                        backgroundPosition: 'center',
+                                        backgroundSize: '100% 100%',
+                                        cursor: proverbRerollsLeft > 0 ? 'pointer' : 'not-allowed',
+                                        opacity: proverbRerollsLeft > 0 ? 1 : 0.65,
+                                        position: 'absolute',
+                                        right: '14px',
+                                        top: '90px',
+                                    }}
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -872,47 +841,102 @@ export default function Page() {
                                 overflow: 'hidden',
                             }}
                         >
-                            {/* Hint label — compact for landscape phone */}
-                            <div style={{
-                                position: 'absolute',
-                                top: '6px',
-                                left: '8px',
-                                padding: '2px 8px',
-                                borderRadius: '9999px',
-                                background: 'rgba(255,255,255,0.85)',
-                                border: '1px solid #cbd5e1',
-                                fontSize: '10px',
-                                color: '#475569',
-                                zIndex: 5,
-                                pointerEvents: 'none',
-                                backdropFilter: 'blur(4px)',
-                            }}>
-                                Drag objects onto the board
-                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!lastSelectedObjectId) return;
 
-                            {currentProverb && (
-                                <div style={{
+                                    setPlacedObjects((prev) => prev.filter((item) => item.id !== lastSelectedObjectId));
+
+                                    if (draggingObjectIdRef.current === lastSelectedObjectId) {
+                                        draggingObjectIdRef.current = null;
+                                        setDraggingObjectId(null);
+                                    }
+
+                                    setLastSelectedObjectId(null);
+                                }}
+                                disabled={!lastSelectedObjectId}
+                                aria-label="Remove selected object"
+                                style={{
                                     position: 'absolute',
-                                    top: '38px',
-                                    left: '8px',
-                                    maxWidth: 'calc(100% - 16px)',
-                                    padding: '8px 10px',
-                                    borderRadius: '12px',
-                                    backgroundImage: "url('/images/ui/epites_kozben_kozmondas.svg')",
+                                    right: '10px',
+                                    bottom: '10px',
+                                    width: '40px',
+                                    height: '40px',
+                                    border: 'none',
+                                    backgroundColor: 'transparent',
+                                    backgroundImage: "url('/images/ui/kuka.svg')",
                                     backgroundRepeat: 'no-repeat',
                                     backgroundPosition: 'center',
                                     backgroundSize: '100% 100%',
-                                    border: '1px solid #dbeafe',
-                                    fontSize: '12px',
-                                    fontWeight: 600,
-                                    color: '#0f172a',
-                                    zIndex: 5,
-                                    backdropFilter: 'blur(4px)',
-                                    boxShadow: '0 8px 20px rgba(15, 23, 42, 0.08)',
+                                    cursor: lastSelectedObjectId ? 'pointer' : 'not-allowed',
+                                    opacity: lastSelectedObjectId ? 1 : 0.45,
+                                    zIndex: 8,
+                                }}
+                            />
+
+                            <div style={{
+                                position: 'absolute',
+                                top: '10px',
+                                left: '14px',
+                                right: '14px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '6px',
+                                zIndex: 5,
+                                pointerEvents: 'none',
+                            }}>
+                                {currentProverb && (
+                                    <div style={{
+                                        width: '100%',
+                                        minHeight: '52px',
+                                        margin: '8px 4px -4px',
+                                        borderRadius: '12px',
+                                        backgroundImage: "url('/images/ui/kozmondasos_panel.svg')",
+                                        backgroundRepeat: 'no-repeat',
+                                        backgroundPosition: 'center',
+                                        backgroundSize: '100% 100%',
+                                        backgroundColor: 'transparent',
+                                        border: 'none',
+                                        fontSize: 'clamp(20px, 2vw, 30px)',
+                                        fontWeight: 700,
+                                        color: '#0f172a',
+                                        textAlign: 'center',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        lineHeight: 1.1,
+                                        backdropFilter: 'none',
+                                        boxShadow: 'none',
+                                    }}>
+                                        {currentProverb}
+                                    </div>
+                                )}
+
+                                <div style={{
+                                    marginLeft: '4px',
+                                    width: '100%',
+                                    height: '30px',
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    borderRadius: '9999px',
+                                    backgroundImage: "url('/images/ui/2perc_timeline-32.svg')",
+                                    backgroundRepeat: 'no-repeat',
+                                    backgroundPosition: 'center',
+                                    backgroundSize: '100% 100%',
                                 }}>
-                                    {currentProverb}
+                                    <div style={{
+                                        position: 'absolute',
+                                        left: '8px',
+                                        top: '9px',
+                                        bottom: '9px',
+                                        width: `calc(max(0px, (100% - 8px) * ${progress / 100}))`,
+                                        transition: 'width 100ms linear',
+                                        background: '#0d9488',
+                                        borderRadius: '9999px',
+                                    }} />
                                 </div>
-                            )}
+                            </div>
 
                             {placedObjects.map((item) => (
                                 <div
@@ -1051,11 +1075,8 @@ export default function Page() {
                             color: '#0d9488',
                             margin: 0,
                         }}>
-                            Kész! 🎉
+                            Lejárt az idő!
                         </h1>
-                        <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
-                            The round is complete.
-                        </p>
                         <button
                             type="button"
                             onClick={() => {
@@ -1085,6 +1106,20 @@ export default function Page() {
                     </div>
                 )}
             </div>
+
+            <span style={{
+                position: 'absolute',
+                left: '10px',
+                bottom: '8px',
+                fontSize: '10px',
+                color: '#64748b',
+                whiteSpace: 'nowrap',
+                fontFamily: 'monospace',
+                pointerEvents: 'none',
+                zIndex: 100,
+            }}>
+                {sessionId}
+            </span>
         </div>
     );
 }
