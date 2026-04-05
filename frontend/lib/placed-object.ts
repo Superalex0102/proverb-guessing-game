@@ -10,6 +10,7 @@ export type PlacedObject = {
   sizeXPct?: number;
   sizeYPct?: number;
   sizePct?: number;
+  isMoveable?: boolean;
 };
 
 export function isPlacedObject(value: unknown): value is PlacedObject {

@@ -66,6 +66,7 @@ export default function Page() {
     const CONSTRUCTING_TIME = 120000;
     const PLACED_OBJECT_SIZE = 240;
     const SIDEBAR_PREVIEW_SIZE = 72;
+    const CENTER_CHARACTER_Y_OFFSET = 40;
 
     const getDefaultVisibleBounds = useCallback((): VisibleBounds => ({
         minX: 0,
@@ -397,6 +398,44 @@ export default function Page() {
             socket.off('session:state', handleSessionState);
         };
     }, [sessionExists, sessionId]);
+    // Place the center character when construction phase starts
+    useEffect(() => {
+        if (status !== 'constructing') return;
+
+        const timeout = window.setTimeout(() => {
+            const board = constructionBoardRef.current;
+            if (!board) return;
+
+            const boardW = board.offsetWidth;
+            const boardH = board.offsetHeight;
+            if (boardW <= 0 || boardH <= 0) return;
+
+            const centerX = (boardW - PLACED_OBJECT_SIZE) / 2;
+            const centerY = (boardH - PLACED_OBJECT_SIZE) / 2;
+
+            const characterExists = placedObjects.some(
+                (obj) => obj.objectId === 'karakter_siman.svg'
+            );
+
+            if (!characterExists) {
+                setPlacedObjects((prev) => [
+                    ...prev,
+                    {
+                        id: `karakter_siman-${Date.now()}-fixed`,
+                        objectId: 'karakter_siman.svg',
+                        src: '/images/characters/karakter_siman.svg',
+                        name: 'Siman Character',
+                        x: centerX,
+                        y: centerY + CENTER_CHARACTER_Y_OFFSET,
+                        isMoveable: false,
+                    }
+                ]);
+            }
+        }, 100);
+
+        return () => window.clearTimeout(timeout);
+    }, [CENTER_CHARACTER_Y_OFFSET, status, placedObjects, PLACED_OBJECT_SIZE]);
+
 
     useEffect(() => {
         if (!sessionId || sessionExists !== true || !socketRef.current) return;
@@ -633,6 +672,9 @@ export default function Page() {
         });
 
         if (!hit) return;
+        // Prevent dragging non-moveable objects
+        if (hit.isMoveable === false) return;
+
 
         setLastSelectedObjectId(hit.id);
         draggingObjectIdRef.current = hit.id;
@@ -844,6 +886,10 @@ export default function Page() {
                             <button
                                 type="button"
                                 onClick={() => {
+                                    // Prevent deletion of non-moveable objects
+                                    const selectedObject = placedObjects.find((obj) => obj.id === lastSelectedObjectId);
+                                    if (selectedObject?.isMoveable === false) return;
+
                                     if (!lastSelectedObjectId) return;
 
                                     setPlacedObjects((prev) => prev.filter((item) => item.id !== lastSelectedObjectId));
@@ -963,7 +1009,9 @@ export default function Page() {
                                             userSelect: 'none',
                                             filter: draggingObjectId === item.id
                                                 ? 'drop-shadow(1px 0 0 #3b82f6) drop-shadow(-1px 0 0 #3b82f6) drop-shadow(0 1px 0 #3b82f6) drop-shadow(0 -1px 0 #3b82f6) drop-shadow(0 8px 24px rgba(0,0,0,0.2))'
-                                                : 'none',
+                                                : item.isMoveable === false
+                                                    ? 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.15))'
+                                                    : 'none',
                                         }}
                                         draggable={false}
                                     />
