@@ -13,6 +13,15 @@ type ObjectCatalogItem = {
     src: string;
 };
 
+type SidebarScreenId = 'root' | 'eyes' | 'mouth' | 'props';
+
+type SidebarRootEntry = {
+    id: Exclude<SidebarScreenId, 'root'>;
+    label: string;
+    panelSrc: string;
+    previewSrc?: string;
+};
+
 type VisibleBounds = {
     minX: number;
     maxX: number;
@@ -45,6 +54,9 @@ export default function Page() {
     const params = useParams<{ id: string }>();
     const sessionId = Array.isArray(params?.id) ? params.id[0] : params?.id;
     const [objectCatalog, setObjectCatalog] = useState<ObjectCatalogItem[]>([]);
+    const [eyeCatalog, setEyeCatalog] = useState<ObjectCatalogItem[]>([]);
+    const [activeSidebarMenu, setActiveSidebarMenu] = useState<SidebarScreenId>('root');
+    const [selectedEyeId, setSelectedEyeId] = useState<string | null>(null);
     const [sessionExists, setSessionExists] = useState<boolean | null>(null);
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState<SessionPhase>('lobby');
@@ -65,8 +77,35 @@ export default function Page() {
     const PICKING_TIME = 10000;
     const CONSTRUCTING_TIME = 120000;
     const PLACED_OBJECT_SIZE = 240;
-    const SIDEBAR_PREVIEW_SIZE = 72;
+    const SIDEBAR_PREVIEW_SIZE = 116;
     const CENTER_CHARACTER_Y_OFFSET = 40;
+    const APPLIED_EYES_SIZE = 150;
+    const APPLIED_EYES_Y_OFFSET = -54;
+    const CHARACTER_OBJECT_ID = 'karakter_siman.svg';
+    const APPLIED_EYES_OBJECT_ID = 'character-eyes';
+
+    const sidebarRootEntries: SidebarRootEntry[] = [
+        {
+            id: 'eyes',
+            label: 'Szem',
+            panelSrc: '/images/ui/szem_panel.svg',
+            previewSrc: '/images/ui/panel_icons/ikon_szem.svg',
+        },
+        {
+            id: 'mouth',
+            label: 'Száj',
+            panelSrc: '/images/ui/szaj_panel.svg',
+            previewSrc: '/images/ui/panel_icons/ikon_szajsvg.svg',
+        },
+        {
+            id: 'props',
+            label: 'Kellékek',
+            panelSrc: '/images/ui/1.svg',
+            previewSrc: objectCatalog[0]?.src,
+        },
+    ];
+
+    const activeSidebarEntry = sidebarRootEntries.find((entry) => entry.id === activeSidebarMenu);
 
     const getDefaultVisibleBounds = useCallback((): VisibleBounds => ({
         minX: 0,
@@ -161,22 +200,41 @@ export default function Page() {
     useEffect(() => {
         let isCancelled = false;
 
-        async function loadObjectCatalog() {
-            const response = await fetch('/api/objects');
-            if (!response.ok) return;
+        async function loadCatalogs() {
+            const [objectsResult, eyesResult] = await Promise.allSettled([
+                fetch('/api/objects'),
+                fetch('/api/characters/eyes'),
+            ]);
 
-            const data: { objects?: unknown } = await response.json();
-            if (!Array.isArray(data.objects)) return;
+            if (isCancelled) return;
 
-            const objects = data.objects.filter(isObjectCatalogItem);
-            if (!isCancelled) {
-                setObjectCatalog(objects);
+            if (objectsResult.status === 'fulfilled' && objectsResult.value.ok) {
+                const objectsData: { objects?: unknown } = await objectsResult.value.json();
+                if (Array.isArray(objectsData.objects)) {
+                    setObjectCatalog(objectsData.objects.filter(isObjectCatalogItem));
+                } else {
+                    setObjectCatalog([]);
+                }
+            } else {
+                setObjectCatalog([]);
+            }
+
+            if (eyesResult.status === 'fulfilled' && eyesResult.value.ok) {
+                const eyesData: { eyes?: unknown } = await eyesResult.value.json();
+                if (Array.isArray(eyesData.eyes)) {
+                    setEyeCatalog(eyesData.eyes.filter(isObjectCatalogItem));
+                } else {
+                    setEyeCatalog([]);
+                }
+            } else {
+                setEyeCatalog([]);
             }
         }
 
-        loadObjectCatalog().catch(() => {
+        loadCatalogs().catch(() => {
             if (!isCancelled) {
                 setObjectCatalog([]);
+                setEyeCatalog([]);
             }
         });
 
@@ -186,7 +244,9 @@ export default function Page() {
     }, []);
 
     useEffect(() => {
-        if (objectCatalog.length === 0) {
+        const allCatalogItems = [...objectCatalog, ...eyeCatalog];
+
+        if (allCatalogItems.length === 0) {
             objectVisibleBoundsRef.current = {};
             return;
         }
@@ -195,7 +255,7 @@ export default function Page() {
 
         const loadVisibleBounds = async () => {
             const measured = await Promise.all(
-                objectCatalog.map(async (item) => {
+                allCatalogItems.map(async (item) => {
                     const bounds = await measureVisibleBounds(item.src);
                     return [item.id, bounds ?? getDefaultVisibleBounds()] as const;
                 }),
@@ -211,7 +271,7 @@ export default function Page() {
         return () => {
             isCancelled = true;
         };
-    }, [getDefaultVisibleBounds, measureVisibleBounds, objectCatalog]);
+    }, [eyeCatalog, getDefaultVisibleBounds, measureVisibleBounds, objectCatalog]);
 
     const syncPhase = useCallback(async (nextPhase: SessionPhase) => {
         if (!sessionId) return;
@@ -398,6 +458,7 @@ export default function Page() {
             socket.off('session:state', handleSessionState);
         };
     }, [sessionExists, sessionId]);
+
     // Place the center character when construction phase starts
     useEffect(() => {
         if (status !== 'constructing') return;
@@ -414,7 +475,7 @@ export default function Page() {
             const centerY = (boardH - PLACED_OBJECT_SIZE) / 2;
 
             const characterExists = placedObjects.some(
-                (obj) => obj.objectId === 'karakter_siman.svg'
+                (obj) => obj.objectId === CHARACTER_OBJECT_ID
             );
 
             if (!characterExists) {
@@ -422,7 +483,7 @@ export default function Page() {
                     ...prev,
                     {
                         id: `karakter_siman-${Date.now()}-fixed`,
-                        objectId: 'karakter_siman.svg',
+                        objectId: CHARACTER_OBJECT_ID,
                         src: '/images/characters/karakter_siman.svg',
                         name: 'Siman Character',
                         x: centerX,
@@ -434,7 +495,43 @@ export default function Page() {
         }, 100);
 
         return () => window.clearTimeout(timeout);
-    }, [CENTER_CHARACTER_Y_OFFSET, status, placedObjects, PLACED_OBJECT_SIZE]);
+    }, [CENTER_CHARACTER_Y_OFFSET, CHARACTER_OBJECT_ID, status, placedObjects, PLACED_OBJECT_SIZE]);
+
+    useEffect(() => {
+        if (!selectedEyeId) return;
+
+        setPlacedObjects((prev) => {
+            const character = prev.find((item) => item.objectId === CHARACTER_OBJECT_ID);
+            if (!character) return prev;
+
+            const selectedEye = eyeCatalog.find((item) => item.id === selectedEyeId);
+            if (!selectedEye) return prev;
+
+            const existingEyes = prev.find((item) => item.objectId === APPLIED_EYES_OBJECT_ID);
+            if (
+                existingEyes &&
+                existingEyes.src === selectedEye.src &&
+                existingEyes.x === character.x &&
+                existingEyes.y === character.y
+            ) {
+                return prev;
+            }
+
+            const withoutEyes = prev.filter((item) => item.objectId !== APPLIED_EYES_OBJECT_ID);
+            return [
+                ...withoutEyes,
+                {
+                    id: createPlacedObjectId(APPLIED_EYES_OBJECT_ID),
+                    objectId: APPLIED_EYES_OBJECT_ID,
+                    src: selectedEye.src,
+                    name: selectedEye.name,
+                    x: character.x,
+                    y: character.y,
+                    isMoveable: false,
+                }
+            ];
+        });
+    }, [APPLIED_EYES_OBJECT_ID, CHARACTER_OBJECT_ID, eyeCatalog, selectedEyeId]);
 
 
     useEffect(() => {
@@ -747,6 +844,8 @@ export default function Page() {
                             type="button"
                             onClick={() => void syncPhase('picking')}
                             style={{
+                                display: 'flex',
+                                alignItems: 'center',
                                 backgroundColor: 'transparent',
                                 backgroundImage: "url('/images/ui/button.svg')",
                                 backgroundRepeat: 'no-repeat',
@@ -988,10 +1087,14 @@ export default function Page() {
                                 <div
                                     key={item.id}
                                     style={{
-                                        left: item.x,
-                                        top: item.y,
-                                        width: `${PLACED_OBJECT_SIZE}px`,
-                                        height: `${PLACED_OBJECT_SIZE}px`,
+                                        left: item.objectId === APPLIED_EYES_OBJECT_ID
+                                            ? item.x + ((PLACED_OBJECT_SIZE - APPLIED_EYES_SIZE) / 2)
+                                            : item.x,
+                                        top: item.objectId === APPLIED_EYES_OBJECT_ID
+                                            ? item.y + APPLIED_EYES_Y_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_EYES_SIZE) / 2)
+                                            : item.y,
+                                        width: `${item.objectId === APPLIED_EYES_OBJECT_ID ? APPLIED_EYES_SIZE : PLACED_OBJECT_SIZE}px`,
+                                        height: `${item.objectId === APPLIED_EYES_OBJECT_ID ? APPLIED_EYES_SIZE : PLACED_OBJECT_SIZE}px`,
                                         zIndex: draggingObjectId === item.id ? 50 : 10,
                                         position: 'absolute',
                                         pointerEvents: 'none',
@@ -1012,6 +1115,7 @@ export default function Page() {
                                                 : item.isMoveable === false
                                                     ? 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.15))'
                                                     : 'none',
+                                            marginTop: item.objectId === APPLIED_EYES_OBJECT_ID ? '-4px' : 0,
                                         }}
                                         draggable={false}
                                     />
@@ -1019,89 +1123,332 @@ export default function Page() {
                             ))}
                         </div>
 
-                        {/* Sidebar — narrow column, scrollable, touch-friendly items */}
+                        {/* Sidebar */}
                         <aside style={{
-                            width: '220px',
+                            width: '38%',
                             flexShrink: 0,
                             borderLeft: '1px solid #e2e8f0',
-                            background: '#dbf5f9',
-                            padding: '10px 8px',
+                            background: activeSidebarMenu === 'root' ? '#dbf5f9' : '#5799a6',
+                            padding: '2px 8px',
                             overflowY: 'auto',
                             overflowX: 'hidden',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '10px',
+                            alignItems: 'stretch',
+                            gap: activeSidebarMenu === 'root' ? '10px' : '0px',
                             WebkitOverflowScrolling: 'touch',
+                            height: '90%',
+                            alignSelf: 'flex-end',
                         }}>
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                                gap: '8px',
-                            }}>
-                                {objectCatalog.map((item, index) => {
-                                    const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds();
-                                    const contentWidth = Math.max(1, visibleBounds.maxX - visibleBounds.minX + 1);
-                                    const contentHeight = Math.max(1, visibleBounds.maxY - visibleBounds.minY + 1);
-                                    const sidebarScale = Math.max(
-                                        1,
-                                        Math.min(
-                                            3.5,
-                                            Math.min(
-                                                (PLACED_OBJECT_SIZE * 0.86) / contentWidth,
-                                                (PLACED_OBJECT_SIZE * 0.86) / contentHeight,
-                                            ),
-                                        ),
-                                    );
-
-                                    const contentCenterX = (visibleBounds.minX + visibleBounds.maxX) / 2;
-                                    const contentCenterY = (visibleBounds.minY + visibleBounds.maxY) / 2;
-                                    const baseCenter = PLACED_OBJECT_SIZE / 2;
-                                    const offsetX = ((baseCenter - contentCenterX) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
-                                    const offsetY = ((baseCenter - contentCenterY) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
-
-                                    return (
-                                        <button
-                                            key={item.id}
-                                            type="button"
-                                            onPointerDown={(event) => startDraggingFromTray(event, item.id)}
-                                            style={{
-                                                width: '100%',
-                                                backgroundColor: 'transparent',
-                                                backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
-                                                backgroundRepeat: 'no-repeat',
-                                                backgroundPosition: 'center',
-                                                backgroundSize: '100% 100%',
-                                                border: 'none',
-                                                borderRadius: '12px',
-                                                padding: '8px 6px',
-                                                cursor: 'grab',
-                                                touchAction: 'none',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                gap: '2px',
-                                                minHeight: '96px',
-                                                overflow: 'hidden',
-                                            }}
-                                        >
+                            {activeSidebarMenu !== 'root' && activeSidebarEntry && (
+                                <div style={{
+                                    width: '100%',
+                                    minHeight: '56px',
+                                    display: 'flex',
+                                    alignItems: 'stretch',
+                                }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveSidebarMenu('root')}
+                                        style={{
+                                            width: '85%',
+                                            minHeight: '56px',
+                                            border: 'none',
+                                            backgroundColor: 'transparent',
+                                            backgroundImage: `url('${activeSidebarEntry.panelSrc}')`,
+                                            backgroundRepeat: 'no-repeat',
+                                            backgroundPosition: 'center',
+                                            backgroundSize: '100% 100%',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'flex-start',
+                                            gap: '10px',
+                                            padding: '6px 14px',
+                                            flexShrink: 0,
+                                        }}
+                                        aria-label="Vissza"
+                                    >
+                                        {activeSidebarEntry.previewSrc && (
                                             <img
-                                                src={item.src}
-                                                alt={item.name}
+                                                src={activeSidebarEntry.previewSrc}
+                                                alt={activeSidebarEntry.label}
                                                 style={{
-                                                    width: `${SIDEBAR_PREVIEW_SIZE}px`,
-                                                    height: `${SIDEBAR_PREVIEW_SIZE}px`,
+                                                    width: '38px',
+                                                    height: '38px',
                                                     objectFit: 'contain',
-                                                    pointerEvents: 'none',
                                                     userSelect: 'none',
-                                                    transform: `translate(${offsetX}px, ${offsetY}px) scale(${sidebarScale})`,
-                                                    transformOrigin: 'center center',
+                                                    pointerEvents: 'none',
+                                                    flexShrink: 0,
                                                 }}
                                                 draggable={false}
                                             />
+                                        )}
+                                        <span style={{
+                                            fontSize: '24px',
+                                            lineHeight: 1,
+                                            color: '#0f172a',
+                                            fontWeight: 700,
+                                            flexShrink: 0,
+                                        }}>
+                                            {activeSidebarEntry.label}
+                                        </span>
+                                    </button>
+                                    // TODO: There is a white background
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveSidebarMenu('root')}
+                                        style={{
+                                            width: '15%',
+                                            minHeight: '56px',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            backgroundImage: "url('/images/ui/visszanyilnak_alap.svg')",
+                                            backgroundRepeat: 'no-repeat',
+                                            backgroundPosition: 'center',
+                                            backgroundSize: '100% 100%',
+                                            cursor: 'pointer',
+                                            flexShrink: 0,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: 0,
+                                        }}
+                                        aria-label="Vissza"
+                                    >
+                                        <img
+                                            src="/images/ui/visszanyil.svg"
+                                            alt=""
+                                            style={{
+                                                width: '60%',
+                                                height: '60%',
+                                                pointerEvents: 'none'
+                                            }}
+                                        />
+                                    </button>
+                                </div>
+                            )}
+
+                            {activeSidebarMenu === 'root' && (
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '10px',
+                                    width: '100%',
+                                    alignItems: 'stretch',
+                                }}>
+                                    {sidebarRootEntries.map((entry) => (
+                                        <button
+                                            key={entry.id}
+                                            type="button"
+                                            onClick={() => setActiveSidebarMenu(entry.id)}
+                                            style={{
+                                                width: '100%',
+                                                minHeight: '92px',
+                                                border: 'none',
+                                                backgroundColor: 'transparent',
+                                                backgroundImage: `url('${entry.panelSrc}')`,
+                                                backgroundRepeat: 'no-repeat',
+                                                backgroundPosition: 'center',
+                                                backgroundSize: '100% 100%',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'flex-start',
+                                                gap: '12px',
+                                                padding: '10px 20px',
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            {entry.previewSrc && (
+                                                <img
+                                                    src={entry.previewSrc}
+                                                    alt={entry.label}
+                                                    style={{
+                                                        width: '64px',
+                                                        height: '64px',
+                                                        objectFit: 'contain',
+                                                        userSelect: 'none',
+                                                        pointerEvents: 'none',
+                                                        flexShrink: 0,
+                                                    }}
+                                                    draggable={false}
+                                                />
+                                            )}
+                                            <span style={{
+                                                fontSize: '34px',
+                                                lineHeight: 1,
+                                                color: '#0f172a',
+                                                fontWeight: 700,
+                                                flexShrink: 0,
+                                            }}>
+                                                {entry.label}
+                                            </span>
                                         </button>
-                                    );
-                                })}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {activeSidebarMenu === 'eyes' && (
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                                    gap: '0px',
+                                }}>
+                                    {eyeCatalog.map((item, index) => {
+                                        const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds();
+                                        const contentWidth = Math.max(1, visibleBounds.maxX - visibleBounds.minX + 1);
+                                        const contentHeight = Math.max(1, visibleBounds.maxY - visibleBounds.minY + 1);
+                                        const sidebarScale = Math.max(
+                                            1,
+                                            Math.min(
+                                                3.5,
+                                                Math.min(
+                                                    (PLACED_OBJECT_SIZE * 0.86) / contentWidth,
+                                                    (PLACED_OBJECT_SIZE * 0.86) / contentHeight,
+                                                ),
+                                            ),
+                                        );
+
+                                        const contentCenterX = (visibleBounds.minX + visibleBounds.maxX) / 2;
+                                        const contentCenterY = (visibleBounds.minY + visibleBounds.maxY) / 2;
+                                        const baseCenter = PLACED_OBJECT_SIZE / 2;
+                                        const offsetX = ((baseCenter - contentCenterX) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
+                                        const offsetY = ((baseCenter - contentCenterY) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
+
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() => setSelectedEyeId(item.id)}
+                                                style={{
+                                                    width: '100%',
+                                                    backgroundColor: 'transparent',
+                                                    backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
+                                                    backgroundRepeat: 'no-repeat',
+                                                    backgroundPosition: 'center',
+                                                    backgroundSize: '100% 100%',
+                                                    border: selectedEyeId === item.id ? '2px solid #0d9488' : 'none',
+                                                    borderRadius: '0px',
+                                                    padding: '0px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    minHeight: '118px',
+                                                    overflow: 'hidden',
+                                                }}
+                                            >
+                                                <img
+                                                    src={item.src}
+                                                    alt={item.name}
+                                                    style={{
+                                                        width: `${SIDEBAR_PREVIEW_SIZE}px`,
+                                                        height: `${SIDEBAR_PREVIEW_SIZE}px`,
+                                                        objectFit: 'contain',
+                                                        pointerEvents: 'none',
+                                                        userSelect: 'none',
+                                                        transform: `translate(${offsetX}px, ${offsetY}px) scale(${sidebarScale})`,
+                                                        transformOrigin: 'center center',
+                                                    }}
+                                                    draggable={false}
+                                                />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {activeSidebarMenu === 'props' && (
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                                    gap: '0px',
+                                }}>
+                                    {objectCatalog.map((item, index) => {
+                                        const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds();
+                                        const contentWidth = Math.max(1, visibleBounds.maxX - visibleBounds.minX + 1);
+                                        const contentHeight = Math.max(1, visibleBounds.maxY - visibleBounds.minY + 1);
+                                        const sidebarScale = Math.max(
+                                            1,
+                                            Math.min(
+                                                3.5,
+                                                Math.min(
+                                                    (PLACED_OBJECT_SIZE * 0.86) / contentWidth,
+                                                    (PLACED_OBJECT_SIZE * 0.86) / contentHeight,
+                                                ),
+                                            ),
+                                        );
+
+                                        const contentCenterX = (visibleBounds.minX + visibleBounds.maxX) / 2;
+                                        const contentCenterY = (visibleBounds.minY + visibleBounds.maxY) / 2;
+                                        const baseCenter = PLACED_OBJECT_SIZE / 2;
+                                        const offsetX = ((baseCenter - contentCenterX) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
+                                        const offsetY = ((baseCenter - contentCenterY) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
+
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onPointerDown={(event) => startDraggingFromTray(event, item.id)}
+                                                style={{
+                                                    width: '100%',
+                                                    backgroundColor: 'transparent',
+                                                    backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
+                                                    backgroundRepeat: 'no-repeat',
+                                                    backgroundPosition: 'center',
+                                                    backgroundSize: '100% 100%',
+                                                    border: 'none',
+                                                    borderRadius: '12px',
+                                                    padding: '0px',
+                                                    cursor: 'grab',
+                                                    touchAction: 'none',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    gap: '0px',
+                                                    minHeight: '112px',
+                                                    overflow: 'hidden',
+                                                }}
+                                            >
+                                                <img
+                                                    src={item.src}
+                                                    alt={item.name}
+                                                    style={{
+                                                        width: `${SIDEBAR_PREVIEW_SIZE}px`,
+                                                        height: `${SIDEBAR_PREVIEW_SIZE}px`,
+                                                        objectFit: 'contain',
+                                                        pointerEvents: 'none',
+                                                        userSelect: 'none',
+                                                        transform: `translate(${offsetX}px, ${offsetY}px) scale(${sidebarScale})`,
+                                                        transformOrigin: 'center center',
+                                                    }}
+                                                    draggable={false}
+                                                />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {(activeSidebarMenu === 'mouth') && (
+                                <div style={{
+                                    minHeight: '120px',
+                                    borderRadius: '12px',
+                                    background: 'rgba(255,255,255,0.35)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    textAlign: 'center',
+                                    padding: '12px',
+                                    color: '#334155',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                }}>
+                                    {activeSidebarMenu === 'mouth' ? 'Száj elemek hamarosan.' : 'Kéz elemek hamarosan.'}
+                                </div>
+                            )}
                         </aside>
                     </div>
                 )}
