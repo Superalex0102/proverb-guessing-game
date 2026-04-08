@@ -1194,7 +1194,7 @@ export default function Page() {
                                             {activeSidebarEntry.label}
                                         </span>
                                     </button>
-                                    // TODO: There is a white background
+                                    {/* TODO: There is a white background */}
                                     <button
                                         type="button"
                                         onClick={() => setActiveSidebarMenu('root')}
@@ -1316,6 +1316,8 @@ export default function Page() {
                                         const offsetX = ((baseCenter - contentCenterX) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
                                         const offsetY = ((baseCenter - contentCenterY) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
 
+                                        const displaySrc = (item as any).previewSrc || item.src;
+
                                         return (
                                             <button
                                                 key={item.id}
@@ -1341,7 +1343,7 @@ export default function Page() {
                                                 }}
                                             >
                                                 <img
-                                                    src={item.src}
+                                                    src={displaySrc}
                                                     alt={item.name}
                                                     style={{
                                                         width: `${SIDEBAR_PREVIEW_SIZE}px`,

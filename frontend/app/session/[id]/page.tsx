@@ -9,14 +9,25 @@ import { isPlacedObjectArray, PlacedObject } from '@/lib/placed-object';
 import { getSocket } from '@/lib/socket';
 import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
 
+type VisibleBounds = {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+};
+
 export default function Page() {
     const TV_OBJECT_SCALE = 1;
+    const FACE_OVERLAY_SIZE = 240;
+    const FACE_OVERLAY_CANVAS_SIZE = 240;
+    const CHARACTER_OBJECT_ID = 'karakter_siman.svg';
     const params = useParams<{ id: string }>();
     const [sessionExists, setSessionExists] = useState<boolean | null>(null);
     const [phase, setPhase] = useState<SessionPhase>('lobby');
     const [placedObjects, setPlacedObjects] = useState<PlacedObject[]>([]);
     const [sourceBoardSize, setSourceBoardSize] = useState<{ width: number; height: number } | null>(null);
     const [showLink, setShowLink] = useState(false);
+    const [overlayBoundsBySrc, setOverlayBoundsBySrc] = useState<Record<string, VisibleBounds>>({});
 
 
     const sessionId = useMemo(() => {
@@ -140,7 +151,123 @@ export default function Page() {
         };
     }, []);
 
+    const isGameActive = phase !== 'lobby';
 
+    const isFaceOverlay = (src: string) =>
+        src.includes('/images/characters/szemek/') ||
+        src.includes('/images/characters/szaj/');
+
+    const getRenderedPosition = (item: PlacedObject) => {
+        const left = item.xPct !== undefined
+            ? `${item.xPct}%`
+            : (sourceBoardSize ? `${(item.x / sourceBoardSize.width) * 100}%` : `${item.x}px`);
+        const top = item.yPct !== undefined
+            ? `${item.yPct}%`
+            : (sourceBoardSize ? `${(item.y / sourceBoardSize.height) * 100}%` : `${item.y}px`);
+
+        return { left, top };
+    };
+
+    useEffect(() => {
+        const overlaySrcs = Array.from(new Set(
+            placedObjects
+                .filter((item) => isFaceOverlay(item.src))
+                .map((item) => item.src),
+        ));
+
+        if (overlaySrcs.length === 0) {
+            setOverlayBoundsBySrc({});
+            return;
+        }
+
+        let isCancelled = false;
+
+        const measureBounds = async (src: string): Promise<VisibleBounds | null> => {
+            return new Promise((resolve) => {
+                const image = new Image();
+
+                image.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = FACE_OVERLAY_CANVAS_SIZE;
+                    canvas.height = FACE_OVERLAY_CANVAS_SIZE;
+
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        resolve(null);
+                        return;
+                    }
+
+                    const scale = Math.min(
+                        FACE_OVERLAY_CANVAS_SIZE / image.naturalWidth,
+                        FACE_OVERLAY_CANVAS_SIZE / image.naturalHeight,
+                    );
+
+                    const drawWidth = image.naturalWidth * scale;
+                    const drawHeight = image.naturalHeight * scale;
+                    const drawX = (FACE_OVERLAY_CANVAS_SIZE - drawWidth) / 2;
+                    const drawY = (FACE_OVERLAY_CANVAS_SIZE - drawHeight) / 2;
+
+                    ctx.clearRect(0, 0, FACE_OVERLAY_CANVAS_SIZE, FACE_OVERLAY_CANVAS_SIZE);
+                    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+
+                    const pixels = ctx.getImageData(0, 0, FACE_OVERLAY_CANVAS_SIZE, FACE_OVERLAY_CANVAS_SIZE).data;
+
+                    let minX = FACE_OVERLAY_CANVAS_SIZE;
+                    let minY = FACE_OVERLAY_CANVAS_SIZE;
+                    let maxX = -1;
+                    let maxY = -1;
+
+                    for (let y = 0; y < FACE_OVERLAY_CANVAS_SIZE; y += 1) {
+                        for (let x = 0; x < FACE_OVERLAY_CANVAS_SIZE; x += 1) {
+                            const alpha = pixels[(y * FACE_OVERLAY_CANVAS_SIZE + x) * 4 + 3];
+                            if (alpha <= 16) continue;
+
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                        }
+                    }
+
+                    if (maxX < 0 || maxY < 0) {
+                        resolve(null);
+                        return;
+                    }
+
+                    resolve({ minX, maxX, minY, maxY });
+                };
+
+                image.onerror = () => resolve(null);
+                image.src = src;
+            });
+        };
+
+        const loadOverlayBounds = async () => {
+            const entries = await Promise.all(
+                overlaySrcs.map(async (src) => [src, await measureBounds(src)] as const),
+            );
+
+            if (isCancelled) return;
+
+            setOverlayBoundsBySrc((prev) => {
+                const next = { ...prev };
+
+                for (const [src, bounds] of entries) {
+                    if (bounds) {
+                        next[src] = bounds;
+                    }
+                }
+
+                return next;
+            });
+        };
+
+        void loadOverlayBounds();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [placedObjects]);
 
     if (sessionExists === null) {
         return (
@@ -159,8 +286,6 @@ export default function Page() {
             </div>
         );
     }
-
-    const isGameActive = phase !== 'lobby';
 
     return (
         <div className="fixed inset-0 overflow-hidden">
@@ -182,12 +307,19 @@ export default function Page() {
                         )}
 
                         {placedObjects.map((item) => {
-                            const left = item.xPct !== undefined
-                                ? `${item.xPct}%`
-                                : (sourceBoardSize ? `${(item.x / sourceBoardSize.width) * 100}%` : `${item.x}px`);
-                            const top = item.yPct !== undefined
-                                ? `${item.yPct}%`
-                                : (sourceBoardSize ? `${(item.y / sourceBoardSize.height) * 100}%` : `${item.y}px`);
+                            const { left, top } = getRenderedPosition(item);
+                            const isOverlay = isFaceOverlay(item.src);
+                            const character = placedObjects.find((candidate) => candidate.objectId === CHARACTER_OBJECT_ID);
+                            const characterPosition = character ? getRenderedPosition(character) : null;
+                            const overlayLeft = isOverlay && characterPosition ? characterPosition.left : left;
+                            const overlayTop = isOverlay && characterPosition ? characterPosition.top : top;
+                            const overlayBounds = overlayBoundsBySrc[item.src];
+                            const overlayOffsetX = overlayBounds
+                                ? (FACE_OVERLAY_CANVAS_SIZE / 2) - ((overlayBounds.minX + overlayBounds.maxX) / 2)
+                                : 0;
+                            const overlayOffsetY = overlayBounds
+                                ? (FACE_OVERLAY_CANVAS_SIZE / 2) - ((overlayBounds.minY + overlayBounds.maxY) / 2)
+                                : 0;
 
                             return (
                                 <img
@@ -197,14 +329,22 @@ export default function Page() {
                                     className="select-none object-contain"
                                     style={{
                                         position: 'absolute',
-                                        left,
-                                        top,
-                                        width: item.sizeXPct !== undefined
-                                            ? `${item.sizeXPct * TV_OBJECT_SCALE}%`
-                                            : (item.sizePct !== undefined ? `${item.sizePct * TV_OBJECT_SCALE}%` : '240px'),
-                                        height: item.sizeYPct !== undefined
-                                            ? `${item.sizeYPct * TV_OBJECT_SCALE}%`
-                                            : (item.sizePct !== undefined ? `${item.sizePct * TV_OBJECT_SCALE}%` : '240px'),
+                                        left: overlayLeft,
+                                        top: overlayTop,
+                                        width: isOverlay
+                                            ? `${FACE_OVERLAY_SIZE}px`
+                                            : item.sizeXPct !== undefined
+                                                ? `${item.sizeXPct * TV_OBJECT_SCALE}%`
+                                                : (item.sizePct !== undefined ? `${item.sizePct * TV_OBJECT_SCALE}%` : '240px'),
+                                        height: isOverlay
+                                            ? `${FACE_OVERLAY_SIZE}px`
+                                            : item.sizeYPct !== undefined
+                                                ? `${item.sizeYPct * TV_OBJECT_SCALE}%`
+                                                : (item.sizePct !== undefined ? `${item.sizePct * TV_OBJECT_SCALE}%` : '240px'),
+                                        transform: isOverlay && (overlayOffsetX !== 0 || overlayOffsetY !== 0)
+                                            ? `translate(${overlayOffsetX}px, ${overlayOffsetY}px)`
+                                            : undefined,
+                                        transformOrigin: 'center center',
                                     }}
                                     draggable={false}
                                 />
