@@ -921,30 +921,28 @@ export default function Page() {
                             position: 'relative',
                         }}>
                             <div style={{
-                                minHeight: '220px',
-                                borderRadius: '16px',
+                                width: '100%',
+                                minHeight: '52px',
+                                margin: '8px 4px -4px',
+                                borderRadius: '12px',
                                 backgroundImage: "url('/images/ui/kozmondasos_panel.svg')",
                                 backgroundRepeat: 'no-repeat',
                                 backgroundPosition: 'center',
                                 backgroundSize: '100% 100%',
-                                padding: '28px 104px',
+                                backgroundColor: 'transparent',
+                                border: 'none',
+                                fontSize: 'clamp(20px, 2vw, 30px)',
+                                fontWeight: 700,
+                                color: '#0f172a',
+                                textAlign: 'center',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                textAlign: 'center',
-                                position: 'relative',
+                                lineHeight: 1.1,
+                                backdropFilter: 'none',
+                                boxShadow: 'none',
                             }}>
-                                <p style={{
-                                    margin: 0,
-                                    width: '100%',
-                                    textAlign: 'center',
-                                    fontSize: 'clamp(26px, 3vw, 56px)',
-                                    lineHeight: 1.15,
-                                    fontWeight: 700,
-                                    color: '#0f172a',
-                                }}>
-                                    {currentProverb ?? 'Selecting a proverb...'}
-                                </p>
+                                {currentProverb ?? 'Selecting a proverb...'}
 
                                 <button
                                     type="button"
@@ -963,8 +961,8 @@ export default function Page() {
                                         cursor: proverbRerollsLeft > 0 ? 'pointer' : 'not-allowed',
                                         opacity: proverbRerollsLeft > 0 ? 1 : 0.65,
                                         position: 'absolute',
-                                        right: '14px',
-                                        top: '90px',
+                                        right: '100px',
+                                        top: '-6px',
                                     }}
                                 />
                             </div>
