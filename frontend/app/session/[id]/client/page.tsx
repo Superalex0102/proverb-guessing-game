@@ -83,6 +83,13 @@ export default function Page() {
     const APPLIED_EYES_Y_OFFSET = -54;
     const CHARACTER_OBJECT_ID = 'karakter_siman.svg';
     const APPLIED_EYES_OBJECT_ID = 'character-eyes';
+    const TIMELINE_HEIGHT_PX = 18;
+    const TIMELINE_FILL_INSET = {
+        left: '1.2%',
+        right: '1.37%',
+        top: '17.5%',
+        bottom: '17.2%',
+    } as const;
 
     const sidebarRootEntries: SidebarRootEntry[] = [
         {
@@ -100,8 +107,8 @@ export default function Page() {
         {
             id: 'props',
             label: 'Kellékek',
-            panelSrc: '/images/ui/1.svg',
-            previewSrc: objectCatalog[0]?.src,
+            panelSrc: '/images/ui/kellek_panel.svg',
+            previewSrc: '/images/ui/panel_icons/ikon_kellekek.svg',
         },
     ];
 
@@ -816,6 +823,8 @@ export default function Page() {
         );
     }
 
+    const timelineFillRatio = Math.min(1, Math.max(0, progress / 100));
+
     return (
         <div style={{
             display: 'flex',
@@ -846,24 +855,26 @@ export default function Page() {
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
+                                justifyContent: 'center',
                                 backgroundColor: 'transparent',
-                                backgroundImage: "url('/images/ui/button.svg')",
+                                backgroundImage: "url('/images/ui/start_gomb.svg')",
                                 backgroundRepeat: 'no-repeat',
                                 backgroundPosition: 'center',
                                 backgroundSize: '100% 100%',
-                                justifyContent: 'center',
                                 color: '#0f172a',
                                 border: 'none',
-                                padding: '12px 36px',
-                                fontSize: '24px',
-                                fontWeight: 700,
+                                padding: 0,
+                                fontSize: '24pt',
+                                fontWeight: 800,
+                                lineHeight: 1,
+                                textAlign: 'center',
                                 cursor: 'pointer',
                                 letterSpacing: '0.05em',
-                                minHeight: '78px',
-                                minWidth: '280px',
+                                width: 'min(90vw, 420px)',
+                                height: '78px',
                             }}
                         >
-                            START
+                            <span style={{ transform: 'translateY(-4px)' }}>START</span>
                         </button>
                     </div>
                 )}
@@ -884,7 +895,7 @@ export default function Page() {
                             top: '8px',
                             left: '8px',
                             right: '8px',
-                            height: '30px',
+                            height: `${TIMELINE_HEIGHT_PX}px`,
                             overflow: 'hidden',
                             borderRadius: '9999px',
                             backgroundImage: "url('/images/ui/2perc_timeline-32.svg')",
@@ -894,10 +905,10 @@ export default function Page() {
                         }}>
                             <div style={{
                                 position: 'absolute',
-                                left: '2px',
-                                top: '9px',
-                                bottom: '9px',
-                                width: `calc((100% - 6px) * ${progress / 100})`,
+                                left: TIMELINE_FILL_INSET.left,
+                                top: TIMELINE_FILL_INSET.top,
+                                bottom: TIMELINE_FILL_INSET.bottom,
+                                width: `calc((100% - ${TIMELINE_FILL_INSET.left} - ${TIMELINE_FILL_INSET.right}) * ${timelineFillRatio})`,
                                 transition: 'width 100ms linear',
                                 background: '#0d9488',
                                 borderRadius: '9999px',
@@ -1027,7 +1038,7 @@ export default function Page() {
                                 right: '14px',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '6px',
+                                gap: '2px',
                                 zIndex: 5,
                                 pointerEvents: 'none',
                             }}>
@@ -1061,7 +1072,7 @@ export default function Page() {
                                 <div style={{
                                     marginLeft: '4px',
                                     width: '100%',
-                                    height: '30px',
+                                    height: `${TIMELINE_HEIGHT_PX}px`,
                                     position: 'relative',
                                     overflow: 'hidden',
                                     borderRadius: '9999px',
@@ -1072,10 +1083,10 @@ export default function Page() {
                                 }}>
                                     <div style={{
                                         position: 'absolute',
-                                        left: '8px',
-                                        top: '9px',
-                                        bottom: '9px',
-                                        width: `calc(max(0px, (100% - 8px) * ${progress / 100}))`,
+                                        left: TIMELINE_FILL_INSET.left,
+                                        top: TIMELINE_FILL_INSET.top,
+                                        bottom: TIMELINE_FILL_INSET.bottom,
+                                        width: `calc((100% - ${TIMELINE_FILL_INSET.left} - ${TIMELINE_FILL_INSET.right}) * ${timelineFillRatio})`,
                                         transition: 'width 100ms linear',
                                         background: '#0d9488',
                                         borderRadius: '9999px',
