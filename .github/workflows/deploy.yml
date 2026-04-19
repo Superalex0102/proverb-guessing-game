@@ -2,7 +2,7 @@ name: Production Deployment
 
 on:
   push:
-    branches: [ main ] # Runs every time you push to main
+    branches: [ master ] # Runs every time you push to master
 
 jobs:
   deploy:
@@ -19,7 +19,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd home/appuser/proverb-guessing-game/
-            git pull origin main
+            git pull origin master
             # Make sure the script is executable
             chmod +x deploy.sh
             # Run your script (pass -f if you want a full rebuild)
