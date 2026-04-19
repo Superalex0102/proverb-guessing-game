@@ -1,8 +1,12 @@
-name: Production Deployment
+name: Remote Deploy
 
 on:
   push:
-    branches: [ master ] # Runs every time you push to master
+    branches: [ master ]
+
+# Add this block here:
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
@@ -10,17 +14,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Deploy to Server via SSH
+      
+      - name: Run deploy script on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd home/appuser/proverb-guessing-game/
+            cd ~/proverb-guessing-game
             git pull origin master
-            # Make sure the script is executable
-            chmod +x deploy.sh
-            # Run your script (pass -f if you want a full rebuild)
             ./deploy.sh
