@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { CONSTRUCTING_TIME_MS, PICKING_TIME_MS } from '@/lib/game-timers';
 import { getProverbs, pickRandomProverb } from '@/lib/proverbs';
 import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
 import { getSessionById, updateSessionPhase, updateSessionProverbState } from '@/lib/session-db';
@@ -8,8 +9,6 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-const PICKING_TIME_MS = 10_000;
-const CONSTRUCTING_TIME_MS = 120_000;
 const MAX_PROVERB_REROLLS = 3;
 
 type PhasePatchBody = {
