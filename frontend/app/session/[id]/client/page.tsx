@@ -7,6 +7,7 @@ import { CONSTRUCTING_TIME_MS, PICKING_TIME_MS } from '@/lib/game-timers';
 import { isPlacedObjectArray, PlacedObject } from '@/lib/placed-object';
 import { getSocket } from '@/lib/socket';
 import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
+import { transcode } from 'node:buffer';
 
 type ObjectCatalogItem = {
     id: string;
@@ -1004,8 +1005,8 @@ export default function Page() {
                                     disabled={proverbRerollsLeft <= 0}
                                     aria-label="Pick a different proverb"
                                     style={{
-                                        width: '48px',
-                                        height: '48px',
+                                        width: '36px',
+                                        height: '36px',
                                         border: 'none',
                                         backgroundColor: 'transparent',
                                         backgroundImage: "url('/images/ui/mondat_kiikszelogomb.svg')",
@@ -1016,7 +1017,7 @@ export default function Page() {
                                         opacity: proverbRerollsLeft > 0 ? 1 : 0.65,
                                         position: 'absolute',
                                         right: '100px',
-                                        top: '-6px',
+                                        top: '-4px',
                                     }}
                                 />
                             </div>
@@ -1202,7 +1203,7 @@ export default function Page() {
                             width: '38%',
                             flexShrink: 0,
                             borderLeft: '1px solid #e2e8f0',
-                            background: activeSidebarMenu === 'root' ? '#dbf5f9' : '#5799a6',
+                            background: 'transparent',
                             padding: '2px 8px',
                             overflowY: 'auto',
                             overflowX: 'hidden',
@@ -1314,7 +1315,7 @@ export default function Page() {
                                             onClick={() => setActiveSidebarMenu(entry.id)}
                                             style={{
                                                 width: '100%',
-                                                minHeight: '92px',
+                                                minHeight: '115px',
                                                 border: 'none',
                                                 backgroundColor: 'transparent',
                                                 backgroundImage: `url('${entry.panelSrc}')`,
@@ -1346,7 +1347,7 @@ export default function Page() {
                                                 />
                                             )}
                                             <span style={{
-                                                fontSize: '34px',
+                                                fontSize: '22px',
                                                 lineHeight: 1,
                                                 color: '#0f172a',
                                                 fontWeight: 700,
