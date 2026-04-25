@@ -1203,8 +1203,8 @@ export default function Page() {
                             width: '38%',
                             flexShrink: 0,
                             borderLeft: '1px solid #e2e8f0',
-                            background: 'transparent',
-                            padding: '2px 8px',
+                            background: '#dbf5f9',
+                            padding: '8px',
                             overflowY: 'auto',
                             overflowX: 'hidden',
                             display: 'flex',
@@ -1227,7 +1227,7 @@ export default function Page() {
                                         onClick={() => setActiveSidebarMenu('root')}
                                         style={{
                                             width: '85%',
-                                            minHeight: '56px',
+                                            minHeight: '70px',
                                             border: 'none',
                                             backgroundColor: 'transparent',
                                             backgroundImage: `url('${activeSidebarEntry.panelSrc}')`,
@@ -1361,75 +1361,93 @@ export default function Page() {
                             )}
 
                             {activeSidebarMenu === 'eyes' && (
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                                    gap: '0px',
-                                }}>
-                                    {eyeCatalog.map((item, index) => {
-                                        const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds();
-                                        const contentWidth = Math.max(1, visibleBounds.maxX - visibleBounds.minX + 1);
-                                        const contentHeight = Math.max(1, visibleBounds.maxY - visibleBounds.minY + 1);
-                                        const sidebarScale = Math.max(
-                                            1,
-                                            Math.min(
-                                                3.5,
+                                <div style={{ position: 'relative', width: '100%', padding: '0' }}>
+
+                                    {/* --- BACKGROUND OBJECT --- */}
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '5px',
+                                        bottom: '10px',
+                                        left: '10px',
+                                        right: '10px',
+                                        backgroundColor: '#5799a6',
+                                        zIndex: 0
+                                    }} />
+
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                                        gap: '4px',
+                                        position: 'relative',
+                                        zIndex: 1,
+                                        padding: '0px',
+                                    }}>
+                                        {eyeCatalog.map((item, index) => {
+                                            const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds();
+                                            const contentWidth = Math.max(1, visibleBounds.maxX - visibleBounds.minX + 1);
+                                            const contentHeight = Math.max(1, visibleBounds.maxY - visibleBounds.minY + 1);
+                                            const sidebarScale = Math.max(
+                                                1,
                                                 Math.min(
-                                                    (PLACED_OBJECT_SIZE * 0.86) / contentWidth,
-                                                    (PLACED_OBJECT_SIZE * 0.86) / contentHeight,
+                                                    3.5,
+                                                    Math.min(
+                                                        (PLACED_OBJECT_SIZE * 0.86) / contentWidth,
+                                                        (PLACED_OBJECT_SIZE * 0.86) / contentHeight,
+                                                    ),
                                                 ),
-                                            ),
-                                        );
+                                            );
 
-                                        const contentCenterX = (visibleBounds.minX + visibleBounds.maxX) / 2;
-                                        const contentCenterY = (visibleBounds.minY + visibleBounds.maxY) / 2;
-                                        const baseCenter = PLACED_OBJECT_SIZE / 2;
-                                        const offsetX = ((baseCenter - contentCenterX) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
-                                        const offsetY = ((baseCenter - contentCenterY) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
+                                            const contentCenterX = (visibleBounds.minX + visibleBounds.maxX) / 2;
+                                            const contentCenterY = (visibleBounds.minY + visibleBounds.maxY) / 2;
+                                            const baseCenter = PLACED_OBJECT_SIZE / 2;
+                                            const offsetX = ((baseCenter - contentCenterX) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
+                                            const offsetY = ((baseCenter - contentCenterY) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
 
-                                        const displaySrc = (item as any).previewSrc || item.src;
+                                            const displaySrc = (item as any).previewSrc || item.src;
 
-                                        return (
-                                            <button
-                                                key={item.id}
-                                                type="button"
-                                                onClick={() => setSelectedEyeId(item.id)}
-                                                style={{
-                                                    width: '100%',
-                                                    backgroundColor: 'transparent',
-                                                    backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
-                                                    backgroundRepeat: 'no-repeat',
-                                                    backgroundPosition: 'center',
-                                                    backgroundSize: '100% 100%',
-                                                    border: selectedEyeId === item.id ? '2px solid #0d9488' : 'none',
-                                                    borderRadius: '0px',
-                                                    padding: '0px',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    minHeight: '118px',
-                                                    overflow: 'hidden',
-                                                }}
-                                            >
-                                                <img
-                                                    src={displaySrc}
-                                                    alt={item.name}
+                                            return (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedEyeId(item.id)}
                                                     style={{
-                                                        width: `${SIDEBAR_PREVIEW_SIZE}px`,
-                                                        height: `${SIDEBAR_PREVIEW_SIZE}px`,
-                                                        objectFit: 'contain',
-                                                        pointerEvents: 'none',
-                                                        userSelect: 'none',
-                                                        transform: `translate(${offsetX}px, ${offsetY}px) scale(${sidebarScale})`,
-                                                        transformOrigin: 'center center',
+                                                        width: '100%',
+                                                        backgroundColor: 'transparent',
+                                                        backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
+                                                        backgroundRepeat: 'no-repeat',
+                                                        backgroundPosition: 'center',
+                                                        backgroundSize: '100% 100%',
+                                                        border: selectedEyeId === item.id ? '2px solid #0d9488' : 'none',
+                                                        borderRadius: '0px',
+                                                        padding: '0px',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        minHeight: '120px',
+                                                        minWidth: '120px',
+                                                        overflow: 'hidden',
                                                     }}
-                                                    draggable={false}
-                                                />
-                                            </button>
-                                        );
-                                    })}
+                                                >
+                                                    <img
+                                                        src={displaySrc}
+                                                        alt={item.name}
+                                                        style={{
+                                                            width: `${SIDEBAR_PREVIEW_SIZE}px`,
+                                                            height: `${SIDEBAR_PREVIEW_SIZE}px`,
+                                                            objectFit: 'contain',
+                                                            pointerEvents: 'none',
+                                                            userSelect: 'none',
+                                                            transform: `translate(${offsetX}px, ${offsetY}px) scale(${sidebarScale * 1.2})`,
+                                                            transformOrigin: 'center center',
+                                                        }}
+                                                        draggable={false}
+                                                    />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             )}
 
