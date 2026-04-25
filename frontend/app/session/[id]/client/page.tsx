@@ -1226,7 +1226,7 @@ export default function Page() {
                                         type="button"
                                         onClick={() => setActiveSidebarMenu('root')}
                                         style={{
-                                            width: '85%',
+                                            width: '90%',
                                             minHeight: '70px',
                                             border: 'none',
                                             backgroundColor: 'transparent',
@@ -1276,14 +1276,14 @@ export default function Page() {
                                             width: '15%',
                                             minHeight: '52px',
                                             border: 'none',
-                                            borderRadius: '0px',
+                                            borderRadius: '8px',
                                             backgroundColor: '#7fb6b7',
                                             cursor: 'pointer',
                                             flexShrink: 0,
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            padding: '2px',
+                                            paddingTop: '10px',
                                         }}
                                         aria-label="Vissza"
                                     >
