@@ -3,10 +3,10 @@
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { CONSTRUCTING_TIME_MS, PICKING_TIME_MS } from '@/lib/game-timers';
+import { CONSTRUCTING_TIME_MS, GUESSING_TIME_MS, PICKING_TIME_MS } from '@/lib/game-timers';
 import { isPlacedObjectArray, PlacedObject } from '@/lib/placed-object';
 import { getSocket } from '@/lib/socket';
-import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
+import { GuessingResult, isGuessingResult, isSessionPhase, SessionPhase } from '@/lib/session-phase';
 import { transcode } from 'node:buffer';
 
 type ObjectCatalogItem = {
@@ -70,6 +70,7 @@ export default function Page() {
     const [lastSelectedObjectId, setLastSelectedObjectId] = useState<string | null>(null);
     const [currentProverb, setCurrentProverb] = useState<string | null>(null);
     const [proverbRerollsLeft, setProverbRerollsLeft] = useState(3);
+    const [guessingResult, setGuessingResult] = useState<GuessingResult | null>(null);
     const constructionBoardRef = useRef<HTMLDivElement | null>(null);
     const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
     const draggingObjectIdRef = useRef<string | null>(null);
@@ -96,6 +97,33 @@ export default function Page() {
         top: '17.5%',
         bottom: '17.2%',
     } as const;
+
+    const applySessionSnapshot = useCallback((snapshot: {
+        phase?: unknown;
+        phaseEndAt?: unknown;
+        currentProverb?: unknown;
+        proverbRerollsLeft?: unknown;
+        guessingResult?: unknown;
+    } | undefined) => {
+        if (!snapshot) return;
+
+        if (isSessionPhase(snapshot.phase)) {
+            setStatus(snapshot.phase);
+        }
+        if (isNullableString(snapshot.phaseEndAt)) {
+            setPhaseEndAt(snapshot.phaseEndAt);
+        }
+        if (isNullableString(snapshot.currentProverb)) {
+            setCurrentProverb(snapshot.currentProverb);
+        }
+        if (isNumber(snapshot.proverbRerollsLeft)) {
+            setProverbRerollsLeft(snapshot.proverbRerollsLeft);
+        }
+        const nextGuessingResult = snapshot.guessingResult;
+        if (nextGuessingResult === null || isGuessingResult(nextGuessingResult)) {
+            setGuessingResult(nextGuessingResult as GuessingResult | null);
+        }
+    }, []);
 
     const sidebarRootEntries: SidebarRootEntry[] = [
         {
@@ -299,7 +327,7 @@ export default function Page() {
         };
     }, [eyeCatalog, getDefaultVisibleBounds, measureVisibleBounds, mouthCatalog, objectCatalog]);
 
-    const syncPhase = useCallback(async (nextPhase: SessionPhase) => {
+    const syncPhase = useCallback(async (nextPhase: SessionPhase, nextGuessingResult: GuessingResult | null = null) => {
         if (!sessionId) return;
 
         const response = await fetch(`/api/sessions/${sessionId}`, {
@@ -307,33 +335,23 @@ export default function Page() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ phase: nextPhase })
+            body: JSON.stringify({ phase: nextPhase, guessingResult: nextGuessingResult })
         });
 
         if (!response.ok) return;
 
-        const data: { session?: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown } } = await response.json();
-        if (!isSessionPhase(data?.session?.phase)) return;
-
-        setStatus(data.session.phase);
-        if (isNullableString(data.session.phaseEndAt)) {
-            setPhaseEndAt(data.session.phaseEndAt);
-        }
-        if (isNullableString(data.session.currentProverb)) {
-            setCurrentProverb(data.session.currentProverb);
-        }
-        if (isNumber(data.session.proverbRerollsLeft)) {
-            setProverbRerollsLeft(data.session.proverbRerollsLeft);
-        }
+        const data: { session?: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown; guessingResult?: unknown } } = await response.json();
+        applySessionSnapshot(data?.session);
 
         socketRef.current?.emit('session:phase-changed', {
             sessionId,
-            phase: data.session.phase,
-            phaseEndAt: isNullableString(data.session.phaseEndAt) ? data.session.phaseEndAt : null,
-            currentProverb: isNullableString(data.session.currentProverb) ? data.session.currentProverb : null,
-            proverbRerollsLeft: isNumber(data.session.proverbRerollsLeft) ? data.session.proverbRerollsLeft : undefined,
+            phase: data.session?.phase,
+            phaseEndAt: isNullableString(data.session?.phaseEndAt) ? data.session.phaseEndAt : null,
+            currentProverb: isNullableString(data.session?.currentProverb) ? data.session.currentProverb : null,
+            proverbRerollsLeft: isNumber(data.session?.proverbRerollsLeft) ? data.session.proverbRerollsLeft : undefined,
+            guessingResult: data.session?.guessingResult,
         });
-    }, [sessionId]);
+    }, [applySessionSnapshot, sessionId]);
 
     const rerollProverb = useCallback(async () => {
         if (!sessionId || status !== 'picking' || proverbRerollsLeft <= 0) return;
@@ -348,28 +366,18 @@ export default function Page() {
 
         if (!response.ok) return;
 
-        const data: { session?: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown } } = await response.json();
-        if (!isSessionPhase(data?.session?.phase)) return;
-
-        setStatus(data.session.phase);
-        if (isNullableString(data.session.phaseEndAt)) {
-            setPhaseEndAt(data.session.phaseEndAt);
-        }
-        if (isNullableString(data.session.currentProverb)) {
-            setCurrentProverb(data.session.currentProverb);
-        }
-        if (isNumber(data.session.proverbRerollsLeft)) {
-            setProverbRerollsLeft(data.session.proverbRerollsLeft);
-        }
+        const data: { session?: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown; guessingResult?: unknown } } = await response.json();
+        applySessionSnapshot(data?.session);
 
         socketRef.current?.emit('session:phase-changed', {
             sessionId,
-            phase: data.session.phase,
-            phaseEndAt: isNullableString(data.session.phaseEndAt) ? data.session.phaseEndAt : null,
-            currentProverb: isNullableString(data.session.currentProverb) ? data.session.currentProverb : null,
-            proverbRerollsLeft: isNumber(data.session.proverbRerollsLeft) ? data.session.proverbRerollsLeft : undefined,
+            phase: data.session?.phase,
+            phaseEndAt: isNullableString(data.session?.phaseEndAt) ? data.session.phaseEndAt : null,
+            currentProverb: isNullableString(data.session?.currentProverb) ? data.session.currentProverb : null,
+            proverbRerollsLeft: isNumber(data.session?.proverbRerollsLeft) ? data.session.proverbRerollsLeft : undefined,
+            guessingResult: data.session?.guessingResult,
         });
-    }, [proverbRerollsLeft, sessionId, status]);
+    }, [applySessionSnapshot, proverbRerollsLeft, sessionId, status]);
 
     useEffect(() => {
         if (!sessionId) {
@@ -390,20 +398,10 @@ export default function Page() {
                             phaseEndAt?: unknown;
                             currentProverb?: unknown;
                             proverbRerollsLeft?: unknown;
+                            guessingResult?: unknown;
                         }
                     } = await response.json();
-                    if (isSessionPhase(data?.session?.phase)) {
-                        setStatus(data.session.phase);
-                    }
-                    if (isNullableString(data?.session?.phaseEndAt)) {
-                        setPhaseEndAt(data.session.phaseEndAt);
-                    }
-                    if (isNullableString(data?.session?.currentProverb)) {
-                        setCurrentProverb(data.session.currentProverb);
-                    }
-                    if (isNumber(data?.session?.proverbRerollsLeft)) {
-                        setProverbRerollsLeft(data.session.proverbRerollsLeft);
-                    }
+                    applySessionSnapshot(data?.session);
                 }
             }
         }
@@ -417,7 +415,7 @@ export default function Page() {
         return () => {
             isCancelled = true;
         };
-    }, [sessionId]);
+    }, [applySessionSnapshot, sessionId]);
 
     useEffect(() => {
         if (!sessionId || sessionExists !== true) return;
@@ -431,19 +429,8 @@ export default function Page() {
             socket.emit('session:join', sessionId);
         };
 
-        const handlePhaseChange = (payload: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown }) => {
-            if (isSessionPhase(payload?.phase)) {
-                setStatus(payload.phase);
-            }
-            if (isNullableString(payload?.phaseEndAt)) {
-                setPhaseEndAt(payload.phaseEndAt);
-            }
-            if (isNullableString(payload?.currentProverb)) {
-                setCurrentProverb(payload.currentProverb);
-            }
-            if (isNumber(payload?.proverbRerollsLeft)) {
-                setProverbRerollsLeft(payload.proverbRerollsLeft);
-            }
+        const handlePhaseChange = (payload: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown; guessingResult?: unknown }) => {
+            applySessionSnapshot(payload);
         };
 
         const handleObjectsUpdate = (payload: { objects?: unknown }) => {
@@ -452,19 +439,8 @@ export default function Page() {
             }
         };
 
-        const handleSessionState = (payload: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown; objects?: unknown }) => {
-            if (isSessionPhase(payload?.phase)) {
-                setStatus(payload.phase);
-            }
-            if (isNullableString(payload?.phaseEndAt)) {
-                setPhaseEndAt(payload.phaseEndAt);
-            }
-            if (isNullableString(payload?.currentProverb)) {
-                setCurrentProverb(payload.currentProverb);
-            }
-            if (isNumber(payload?.proverbRerollsLeft)) {
-                setProverbRerollsLeft(payload.proverbRerollsLeft);
-            }
+        const handleSessionState = (payload: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown; guessingResult?: unknown; objects?: unknown }) => {
+            applySessionSnapshot(payload);
 
             if (isPlacedObjectArray(payload?.objects)) {
                 setPlacedObjects(payload.objects);
@@ -483,7 +459,7 @@ export default function Page() {
             socket.off('session:objects-updated', handleObjectsUpdate);
             socket.off('session:state', handleSessionState);
         };
-    }, [sessionExists, sessionId]);
+    }, [applySessionSnapshot, sessionExists, sessionId]);
 
     // Place the center character when construction phase starts
     useEffect(() => {
@@ -638,7 +614,11 @@ export default function Page() {
             return;
         }
 
-        const duration = status === 'picking' ? PICKING_TIME_MS : CONSTRUCTING_TIME_MS;
+        const duration = status === 'picking'
+            ? PICKING_TIME_MS
+            : status === 'constructing'
+                ? CONSTRUCTING_TIME_MS
+                : GUESSING_TIME_MS;
         const endAtMs = Date.parse(phaseEndAt);
         if (!Number.isFinite(endAtMs)) {
             setProgress(0);
@@ -654,7 +634,9 @@ export default function Page() {
                 if (status === 'picking') {
                     void syncPhase('constructing');
                 } else if (status === 'constructing') {
-                    void syncPhase('finished');
+                    void syncPhase('guessing');
+                } else if (status === 'guessing') {
+                    void syncPhase('finished', 'timeout');
                 }
             }
         };
@@ -845,6 +827,48 @@ export default function Page() {
         };
     };
 
+    const sendButtonStyle = {
+        backgroundColor: 'transparent',
+        backgroundImage: "url('/images/ui/kuldes_gomb.svg')",
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        backgroundSize: '100% 100%',
+        border: 'none',
+        cursor: 'pointer',
+        width: '100px',
+        height: '50px',
+    } as const;
+
+    const handleSendButtonClick = useCallback(() => {
+        if (status === 'guessing') {
+            void syncPhase('finished', 'success');
+            return;
+        }
+
+        void syncPhase('guessing');
+    }, [status, syncPhase]);
+
+    const startNextRound = useCallback(() => {
+        if (!sessionId) return;
+
+        setPlacedObjects([]);
+        setSelectedEyeId(null);
+        setSelectedMouthId(null);
+        setActiveSidebarMenu('root');
+        setLastSelectedObjectId(null);
+        setDraggingObjectId(null);
+        draggingObjectIdRef.current = null;
+
+        socketRef.current?.emit('session:objects-changed', {
+            sessionId,
+            objects: [],
+            boardWidth: constructionBoardRef.current?.offsetWidth,
+            boardHeight: constructionBoardRef.current?.offsetHeight,
+        });
+
+        void syncPhase('picking');
+    }, [sessionId, syncPhase]);
+
     if (sessionExists === null) {
         return (
             <div style={{
@@ -1025,8 +1049,8 @@ export default function Page() {
                     </div>
                 )}
 
-                {/* CONSTRUCTING — board + sidebar */}
-                {status === 'constructing' && (
+                {/* CONSTRUCTING / GUESSING — board + (sidebar only in constructing) */}
+                {(status === 'constructing' || status === 'guessing') && (
                     <div style={{
                         flex: 1,
                         display: 'flex',
@@ -1046,43 +1070,59 @@ export default function Page() {
                                 overflow: 'hidden',
                             }}
                         >
+                            {status !== 'guessing' && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        // Prevent deletion of non-moveable objects
+                                        const selectedObject = placedObjects.find((obj) => obj.id === lastSelectedObjectId);
+                                        if (selectedObject?.isMoveable === false) return;
+
+                                        if (!lastSelectedObjectId) return;
+
+                                        setPlacedObjects((prev) => prev.filter((item) => item.id !== lastSelectedObjectId));
+
+                                        if (draggingObjectIdRef.current === lastSelectedObjectId) {
+                                            draggingObjectIdRef.current = null;
+                                            setDraggingObjectId(null);
+                                        }
+
+                                        setLastSelectedObjectId(null);
+                                    }}
+                                    disabled={!lastSelectedObjectId}
+                                    aria-label="Remove selected object"
+                                    style={{
+                                        position: 'absolute',
+                                        right: '15px',
+                                        bottom: '15px',
+                                        width: '60px',
+                                        height: '60px',
+                                        border: 'none',
+                                        backgroundColor: 'transparent',
+                                        backgroundImage: "url('/images/ui/kuka.svg')",
+                                        backgroundRepeat: 'no-repeat',
+                                        backgroundPosition: 'center',
+                                        backgroundSize: '100% 100%',
+                                        cursor: lastSelectedObjectId ? 'pointer' : 'not-allowed',
+                                        opacity: lastSelectedObjectId ? 1 : 0.45,
+                                        zIndex: 8,
+                                    }}
+                                />
+                            )}
+
                             <button
                                 type="button"
-                                onClick={() => {
-                                    // Prevent deletion of non-moveable objects
-                                    const selectedObject = placedObjects.find((obj) => obj.id === lastSelectedObjectId);
-                                    if (selectedObject?.isMoveable === false) return;
-
-                                    if (!lastSelectedObjectId) return;
-
-                                    setPlacedObjects((prev) => prev.filter((item) => item.id !== lastSelectedObjectId));
-
-                                    if (draggingObjectIdRef.current === lastSelectedObjectId) {
-                                        draggingObjectIdRef.current = null;
-                                        setDraggingObjectId(null);
-                                    }
-
-                                    setLastSelectedObjectId(null);
-                                }}
-                                disabled={!lastSelectedObjectId}
-                                aria-label="Remove selected object"
+                                onClick={handleSendButtonClick}
                                 style={{
+                                    ...sendButtonStyle,
                                     position: 'absolute',
-                                    right: '15px',
+                                    left: '30px',
                                     bottom: '15px',
-                                    width: '50px',
-                                    height: '50px',
-                                    border: 'none',
-                                    backgroundColor: 'transparent',
-                                    backgroundImage: "url('/images/ui/kuka.svg')",
-                                    backgroundRepeat: 'no-repeat',
-                                    backgroundPosition: 'center',
-                                    backgroundSize: '100% 100%',
-                                    cursor: lastSelectedObjectId ? 'pointer' : 'not-allowed',
-                                    opacity: lastSelectedObjectId ? 1 : 0.45,
-                                    zIndex: 8,
+                                    zIndex: 9,
                                 }}
-                            />
+                                aria-label={status === 'guessing' ? 'Finish game' : 'Start guessing phase'}
+                            >
+                            </button>
 
                             <div style={{
                                 position: 'absolute',
@@ -1098,6 +1138,7 @@ export default function Page() {
                                 {currentProverb && (
                                     <div style={{
                                         width: '100%',
+
                                         minHeight: '52px',
                                         margin: '8px 4px -4px',
                                         borderRadius: '12px',
@@ -1198,7 +1239,8 @@ export default function Page() {
                             ))}
                         </div>
 
-                        {/* Sidebar */}
+                        {/* Sidebar (only visible during constructing) */}
+                        {status === 'constructing' && (
                         <aside style={{
                             width: '38%',
                             flexShrink: 0,
@@ -1596,6 +1638,7 @@ export default function Page() {
                                 </div>
                             )}
                         </aside>
+                        )}
                     </div>
                 )}
 
@@ -1616,33 +1659,24 @@ export default function Page() {
                             color: '#0d9488',
                             margin: 0,
                         }}>
-                            Lejárt az idő!
+                            {guessingResult === 'success' ? 'Sikeres találat!' : 'Lejárt az idő!'}
                         </h1>
                         <button
                             type="button"
-                            onClick={() => {
-                                setPlacedObjects([]);
-                                setCurrentProverb(null);
-                                setProverbRerollsLeft(3);
-                                void syncPhase('lobby');
-                            }}
+                            onClick={startNextRound}
                             style={{
                                 backgroundColor: 'transparent',
-                                backgroundImage: "url('/images/ui/button.svg')",
+                                backgroundImage: "url('/images/ui/kuldes_gomb.svg')",
                                 backgroundRepeat: 'no-repeat',
                                 backgroundPosition: 'center',
                                 backgroundSize: '100% 100%',
-                                color: '#0f172a',
                                 border: 'none',
                                 padding: '12px 28px',
-                                fontSize: '18px',
-                                fontWeight: 700,
                                 cursor: 'pointer',
                                 minHeight: '72px',
                                 minWidth: '320px',
                             }}
                         >
-                            Következő közmondás
                         </button>
                     </div>
                 )}

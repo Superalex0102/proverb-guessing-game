@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
-import { CONSTRUCTING_TIME_MS, PICKING_TIME_MS } from '@/lib/game-timers';
+import { CONSTRUCTING_TIME_MS, GUESSING_TIME_MS, PICKING_TIME_MS } from '@/lib/game-timers';
 import { getProverbs, pickRandomProverb } from '@/lib/proverbs';
-import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
+import { GuessingResult, isGuessingResult, isSessionPhase, SessionPhase } from '@/lib/session-phase';
 import { getSessionById, updateSessionPhase, updateSessionProverbState } from '@/lib/session-db';
 
 type RouteContext = {
@@ -14,6 +14,7 @@ const MAX_PROVERB_REROLLS = 3;
 type PhasePatchBody = {
   phase?: unknown;
   action?: unknown;
+  guessingResult?: unknown;
 };
 
 function getPhaseEndAt(phase: SessionPhase): string | null {
@@ -25,7 +26,15 @@ function getPhaseEndAt(phase: SessionPhase): string | null {
     return new Date(Date.now() + CONSTRUCTING_TIME_MS).toISOString();
   }
 
+  if (phase === 'guessing') {
+    return new Date(Date.now() + GUESSING_TIME_MS).toISOString();
+  }
+
   return null;
+}
+
+function parseGuessingResult(value: unknown): GuessingResult | null {
+  return isGuessingResult(value) ? value : null;
 }
 
 export async function GET(_: Request, context: RouteContext) {
@@ -98,6 +107,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   let currentProverb = existingSession.currentProverb;
   let proverbRerollsLeft = existingSession.proverbRerollsLeft;
   let usedProverbs = existingSession.usedProverbs;
+  let guessingResult: GuessingResult | null = null;
 
   if (body.phase === 'picking') {
     const proverbs = await getProverbs();
@@ -108,10 +118,15 @@ export async function PATCH(request: Request, context: RouteContext) {
     proverbRerollsLeft = MAX_PROVERB_REROLLS;
   } else if (body.phase === 'lobby') {
     currentProverb = null;
-        usedProverbs = [];
-      } else if (body.phase === 'constructing' && existingSession.currentProverb) {
-        usedProverbs = [...existingSession.usedProverbs, existingSession.currentProverb];
+    usedProverbs = [];
     proverbRerollsLeft = MAX_PROVERB_REROLLS;
+  } else if (body.phase === 'constructing' && existingSession.currentProverb) {
+    usedProverbs = [...existingSession.usedProverbs, existingSession.currentProverb];
+    proverbRerollsLeft = MAX_PROVERB_REROLLS;
+  }
+
+  if (body.phase === 'finished') {
+    guessingResult = parseGuessingResult(body.guessingResult);
   }
 
   const session = await updateSessionPhase(
@@ -120,6 +135,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     getPhaseEndAt(body.phase),
     currentProverb,
     proverbRerollsLeft,
+    guessingResult,
     usedProverbs,
   );
   if (!session) {
