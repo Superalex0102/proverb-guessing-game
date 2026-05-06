@@ -35,6 +35,19 @@ function createPlacedObjectId(objectId: string): string {
     return `${objectId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const PLACED_OBJECT_SIZE = 240;
+const CHARACTER_OBJECT_SIZE = 320;
+const CHARACTER_OBJECT_ID = 'karakter_siman.svg';
+const CHARACTER_OBJECT_SRC = '/images/characters/karakter_siman.svg';
+
+function getObjectSize(objectId: string, src?: string): number {
+    if (objectId === CHARACTER_OBJECT_ID || src === CHARACTER_OBJECT_SRC) {
+        return CHARACTER_OBJECT_SIZE;
+    }
+
+    return PLACED_OBJECT_SIZE;
+}
+
 function isObjectCatalogItem(value: unknown): value is ObjectCatalogItem {
     if (!value || typeof value !== 'object') return false;
 
@@ -79,15 +92,22 @@ export default function Page() {
     // Cache of off-screen canvases keyed by object src, used for pixel hit-testing
     const objectCanvasRef = useRef<Record<string, HTMLCanvasElement>>({});
 
-    const PLACED_OBJECT_SIZE = 240;
     const SIDEBAR_PREVIEW_SIZE = 116;
+    const SIDEBAR_PREVIEW_VERTICAL_LIFT_PX = -8;
+    const SIDEBAR_PREVIEW_CONTENT_SCALE = 0.86;
+    const SIDEBAR_PREVIEW_MAX_SCALE = 3.5;
+    const SIDEBAR_PREVIEW_SCALE_MULTIPLIER = 1.2;
+    const SIDEBAR_PANEL_VARIANTS = 6;
+    const SIDEBAR_EYES_ITEM_MIN_HEIGHT = 140;
+    const SIDEBAR_PROPS_ITEM_MIN_HEIGHT = 112;
+    const SIDEBAR_MOUTH_ITEM_MIN_HEIGHT = 118;
     const CENTER_CHARACTER_Y_OFFSET = 40;
-    const APPLIED_EYES_SIZE = 130;
-    const APPLIED_EYES_X_OFFSET = 5;
-    const APPLIED_EYES_Y_OFFSET = -60;
-    const APPLIED_MOUTH_SIZE = 150;
-    const APPLIED_MOUTH_Y_OFFSET = -54;
-    const CHARACTER_OBJECT_ID = 'karakter_siman.svg';
+    const APPLIED_EYES_SIZE = 160;
+    const APPLIED_EYES_X_OFFSET = 38;
+    const APPLIED_EYES_Y_OFFSET = -45;
+    const APPLIED_MOUTH_SIZE = 180;
+    const APPLIED_MOUTH_X_OFFSET = 38;
+    const APPLIED_MOUTH_Y_OFFSET = -20;
     const APPLIED_EYES_OBJECT_ID = 'character-eyes';
     const APPLIED_MOUTH_OBJECT_ID = 'character-mouth';
     const TIMELINE_HEIGHT_PX = 18;
@@ -148,21 +168,25 @@ export default function Page() {
 
     const activeSidebarEntry = sidebarRootEntries.find((entry) => entry.id === activeSidebarMenu);
 
-    const getDefaultVisibleBounds = useCallback((): VisibleBounds => ({
-        minX: 0,
-        maxX: PLACED_OBJECT_SIZE - 1,
-        minY: 0,
-        maxY: PLACED_OBJECT_SIZE - 1,
-    }), [PLACED_OBJECT_SIZE]);
+    const getDefaultVisibleBounds = useCallback((objectId: string, src?: string): VisibleBounds => {
+        const objectSize = getObjectSize(objectId, src);
 
-    const measureVisibleBounds = useCallback((src: string): Promise<VisibleBounds | null> => {
+        return {
+            minX: 0,
+            maxX: objectSize - 1,
+            minY: 0,
+            maxY: objectSize - 1,
+        };
+    }, []);
+
+    const measureVisibleBounds = useCallback((src: string, objectSize: number): Promise<VisibleBounds | null> => {
         return new Promise((resolve) => {
             const image = new Image();
 
             image.onload = () => {
                 const canvas = document.createElement('canvas');
-                canvas.width = PLACED_OBJECT_SIZE;
-                canvas.height = PLACED_OBJECT_SIZE;
+                canvas.width = objectSize;
+                canvas.height = objectSize;
 
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
@@ -170,33 +194,33 @@ export default function Page() {
                     return;
                 }
 
-                ctx.clearRect(0, 0, PLACED_OBJECT_SIZE, PLACED_OBJECT_SIZE);
+                ctx.clearRect(0, 0, objectSize, objectSize);
 
                 const scale = Math.min(
-                    PLACED_OBJECT_SIZE / image.naturalWidth,
-                    PLACED_OBJECT_SIZE / image.naturalHeight,
+                    objectSize / image.naturalWidth,
+                    objectSize / image.naturalHeight,
                 );
 
                 const drawWidth = image.naturalWidth * scale;
                 const drawHeight = image.naturalHeight * scale;
-                const drawX = (PLACED_OBJECT_SIZE - drawWidth) / 2;
-                const drawY = (PLACED_OBJECT_SIZE - drawHeight) / 2;
+                const drawX = (objectSize - drawWidth) / 2;
+                const drawY = (objectSize - drawHeight) / 2;
 
                 ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
 
                 // Keep the canvas around for later pixel hit-testing
                 objectCanvasRef.current[src] = canvas;
 
-                const pixels = ctx.getImageData(0, 0, PLACED_OBJECT_SIZE, PLACED_OBJECT_SIZE).data;
+                const pixels = ctx.getImageData(0, 0, objectSize, objectSize).data;
 
-                let minX = PLACED_OBJECT_SIZE;
-                let minY = PLACED_OBJECT_SIZE;
+                let minX = objectSize;
+                let minY = objectSize;
                 let maxX = -1;
                 let maxY = -1;
 
-                for (let y = 0; y < PLACED_OBJECT_SIZE; y += 1) {
-                    for (let x = 0; x < PLACED_OBJECT_SIZE; x += 1) {
-                        const alpha = pixels[(y * PLACED_OBJECT_SIZE + x) * 4 + 3];
+                for (let y = 0; y < objectSize; y += 1) {
+                    for (let x = 0; x < objectSize; x += 1) {
+                        const alpha = pixels[(y * objectSize + x) * 4 + 3];
                         if (alpha <= 16) continue;
 
                         if (x < minX) minX = x;
@@ -217,7 +241,7 @@ export default function Page() {
             image.onerror = () => resolve(null);
             image.src = src;
         });
-    }, [PLACED_OBJECT_SIZE]);
+    }, []);
 
     /**
      * Returns true if the pixel at (localX, localY) within the object's
@@ -229,7 +253,7 @@ export default function Page() {
 
         const x = Math.round(localX);
         const y = Math.round(localY);
-        if (x < 0 || y < 0 || x >= PLACED_OBJECT_SIZE || y >= PLACED_OBJECT_SIZE) return false;
+        if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return false;
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return true;
@@ -298,7 +322,12 @@ export default function Page() {
     }, []);
 
     useEffect(() => {
-        const allCatalogItems = [...objectCatalog, ...eyeCatalog, ...mouthCatalog];
+        const allCatalogItems = [
+            ...objectCatalog,
+            ...eyeCatalog,
+            ...mouthCatalog,
+            { id: CHARACTER_OBJECT_ID, name: 'Siman Character', src: CHARACTER_OBJECT_SRC },
+        ];
 
         if (allCatalogItems.length === 0) {
             objectVisibleBoundsRef.current = {};
@@ -310,8 +339,9 @@ export default function Page() {
         const loadVisibleBounds = async () => {
             const measured = await Promise.all(
                 allCatalogItems.map(async (item) => {
-                    const bounds = await measureVisibleBounds(item.src);
-                    return [item.id, bounds ?? getDefaultVisibleBounds()] as const;
+                    const objectSize = getObjectSize(item.id, item.src);
+                    const bounds = await measureVisibleBounds(item.src, objectSize);
+                    return [item.id, bounds ?? getDefaultVisibleBounds(item.id, item.src)] as const;
                 }),
             );
 
@@ -473,8 +503,9 @@ export default function Page() {
             const boardH = board.offsetHeight;
             if (boardW <= 0 || boardH <= 0) return;
 
-            const centerX = (boardW - PLACED_OBJECT_SIZE) / 2;
-            const centerY = (boardH - PLACED_OBJECT_SIZE) / 2;
+            const characterSize = getObjectSize(CHARACTER_OBJECT_ID, CHARACTER_OBJECT_SRC);
+            const centerX = (boardW - characterSize) / 2;
+            const centerY = (boardH - characterSize) / 2;
 
             const characterExists = placedObjects.some(
                 (obj) => obj.objectId === CHARACTER_OBJECT_ID
@@ -497,7 +528,7 @@ export default function Page() {
         }, 100);
 
         return () => window.clearTimeout(timeout);
-    }, [CENTER_CHARACTER_Y_OFFSET, CHARACTER_OBJECT_ID, status, placedObjects, PLACED_OBJECT_SIZE]);
+    }, [CENTER_CHARACTER_Y_OFFSET, placedObjects, status]);
 
     useEffect(() => {
         if (!selectedEyeId) return;
@@ -588,8 +619,8 @@ export default function Page() {
                 ...obj,
                 xPct: (obj.x / boardW) * 100,
                 yPct: (obj.y / boardH) * 100,
-                sizeXPct: (PLACED_OBJECT_SIZE / boardW) * 100,
-                sizeYPct: (PLACED_OBJECT_SIZE / boardH) * 100,
+                sizeXPct: (getObjectSize(obj.objectId, obj.src) / boardW) * 100,
+                sizeYPct: (getObjectSize(obj.objectId, obj.src) / boardH) * 100,
             }));
 
             socketRef.current?.emit('session:objects-changed', {
@@ -681,14 +712,14 @@ export default function Page() {
         };
     }, []);
 
-    const clampToBoard = useCallback((objectId: string, x: number, y: number) => {
+    const clampToBoard = useCallback((objectId: string, x: number, y: number, src?: string) => {
         const board = constructionBoardRef.current;
         if (!board) return { x, y };
 
         const boardWidth = board.offsetWidth;
         const boardHeight = board.offsetHeight;
 
-        const visibleBounds = objectVisibleBoundsRef.current[objectId] ?? getDefaultVisibleBounds();
+        const visibleBounds = objectVisibleBoundsRef.current[objectId] ?? getDefaultVisibleBounds(objectId, src);
 
         const minX = -visibleBounds.minX;
         const minY = -visibleBounds.minY;
@@ -705,7 +736,7 @@ export default function Page() {
         const object = objectCatalog.find((item) => item.id === objectId);
         if (!object) return null;
 
-        const clamped = clampToBoard(object.id, x, y);
+        const clamped = clampToBoard(object.id, x, y, object.src);
         const placedId = createPlacedObjectId(object.id);
 
         setPlacedObjects((prev) => [
@@ -766,7 +797,7 @@ export default function Page() {
                 const activeObject = prev.find((item) => item.id === activeId);
                 if (!activeObject) return prev;
 
-                const clamped = clampToBoard(activeObject.objectId, nextX, nextY);
+                const clamped = clampToBoard(activeObject.objectId, nextX, nextY, activeObject.src);
 
                 return prev.map((item) =>
                     item.id === activeId ? { ...item, x: clamped.x, y: clamped.y } : item
@@ -1187,56 +1218,60 @@ export default function Page() {
                                 </div>
                             </div>
 
-                            {placedObjects.map((item) => (
-                                <div
-                                    key={item.id}
-                                    style={{
-                                        left: item.objectId === APPLIED_EYES_OBJECT_ID
-                                            ? item.x + APPLIED_EYES_X_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_EYES_SIZE) / 2)
-                                            : item.objectId === APPLIED_MOUTH_OBJECT_ID
-                                                ? item.x + ((PLACED_OBJECT_SIZE - APPLIED_MOUTH_SIZE) / 2)
-                                                : item.x,
-                                        top: item.objectId === APPLIED_EYES_OBJECT_ID
-                                            ? item.y + APPLIED_EYES_Y_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_EYES_SIZE) / 2)
-                                            : item.objectId === APPLIED_MOUTH_OBJECT_ID
-                                                ? item.y + APPLIED_MOUTH_Y_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_MOUTH_SIZE) / 2)
-                                                : item.y,
-                                        width: `${item.objectId === APPLIED_EYES_OBJECT_ID
-                                            ? APPLIED_EYES_SIZE
-                                            : item.objectId === APPLIED_MOUTH_OBJECT_ID
-                                                ? APPLIED_MOUTH_SIZE
-                                                : PLACED_OBJECT_SIZE}px`,
-                                        height: `${item.objectId === APPLIED_EYES_OBJECT_ID
-                                            ? APPLIED_EYES_SIZE
-                                            : item.objectId === APPLIED_MOUTH_OBJECT_ID
-                                                ? APPLIED_MOUTH_SIZE
-                                                : PLACED_OBJECT_SIZE}px`,
-                                        zIndex: draggingObjectId === item.id ? 50 : 10,
-                                        position: 'absolute',
-                                        pointerEvents: 'none',
-                                    }}
-                                    aria-label={`Move ${item.name}`}
-                                >
-                                    <img
-                                        src={item.src}
-                                        alt={item.name}
+                            {placedObjects.map((item) => {
+                                const objectSize = getObjectSize(item.objectId, item.src);
+
+                                return (
+                                    <div
+                                        key={item.id}
                                         style={{
-                                            width: '100%',
-                                            height: '100%',
-                                            objectFit: 'contain',
+                                            left: item.objectId === APPLIED_EYES_OBJECT_ID
+                                                ? item.x + APPLIED_EYES_X_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_EYES_SIZE) / 2)
+                                                : item.objectId === APPLIED_MOUTH_OBJECT_ID
+                                                    ? item.x + APPLIED_MOUTH_X_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_MOUTH_SIZE) / 2)
+                                                    : item.x,
+                                            top: item.objectId === APPLIED_EYES_OBJECT_ID
+                                                ? item.y + APPLIED_EYES_Y_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_EYES_SIZE) / 2)
+                                                : item.objectId === APPLIED_MOUTH_OBJECT_ID
+                                                    ? item.y + APPLIED_MOUTH_Y_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_MOUTH_SIZE) / 2)
+                                                    : item.y,
+                                            width: `${item.objectId === APPLIED_EYES_OBJECT_ID
+                                                ? APPLIED_EYES_SIZE
+                                                : item.objectId === APPLIED_MOUTH_OBJECT_ID
+                                                    ? APPLIED_MOUTH_SIZE
+                                                    : objectSize}px`,
+                                            height: `${item.objectId === APPLIED_EYES_OBJECT_ID
+                                                ? APPLIED_EYES_SIZE
+                                                : item.objectId === APPLIED_MOUTH_OBJECT_ID
+                                                    ? APPLIED_MOUTH_SIZE
+                                                    : objectSize}px`,
+                                            zIndex: draggingObjectId === item.id ? 50 : 10,
+                                            position: 'absolute',
                                             pointerEvents: 'none',
-                                            userSelect: 'none',
-                                            filter: draggingObjectId === item.id
-                                                ? 'drop-shadow(1px 0 0 #3b82f6) drop-shadow(-1px 0 0 #3b82f6) drop-shadow(0 1px 0 #3b82f6) drop-shadow(0 -1px 0 #3b82f6) drop-shadow(0 8px 24px rgba(0,0,0,0.2))'
-                                                : item.isMoveable === false
-                                                    ? 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.15))'
-                                                    : 'none',
-                                            marginTop: item.objectId === APPLIED_EYES_OBJECT_ID ? '-4px' : item.objectId === APPLIED_MOUTH_OBJECT_ID ? '-4px' : 0,
                                         }}
-                                        draggable={false}
-                                    />
-                                </div>
-                            ))}
+                                        aria-label={`Move ${item.name}`}
+                                    >
+                                        <img
+                                            src={item.src}
+                                            alt={item.name}
+                                            style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'contain',
+                                                pointerEvents: 'none',
+                                                userSelect: 'none',
+                                                filter: draggingObjectId === item.id
+                                                    ? 'drop-shadow(1px 0 0 #3b82f6) drop-shadow(-1px 0 0 #3b82f6) drop-shadow(0 1px 0 #3b82f6) drop-shadow(0 -1px 0 #3b82f6) drop-shadow(0 8px 24px rgba(0,0,0,0.2))'
+                                                    : item.isMoveable === false
+                                                        ? 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.15))'
+                                                        : 'none',
+                                                marginTop: item.objectId === APPLIED_EYES_OBJECT_ID ? '-4px' : item.objectId === APPLIED_MOUTH_OBJECT_ID ? '-4px' : 0,
+                                            }}
+                                            draggable={false}
+                                        />
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         {/* Sidebar (only visible during constructing) */}
@@ -1269,10 +1304,10 @@ export default function Page() {
                                         onClick={() => setActiveSidebarMenu('root')}
                                         style={{
                                             width: '90%',
-                                            minHeight: '70px',
+                                            minHeight: '75px',
                                             border: 'none',
                                             backgroundColor: 'transparent',
-                                            backgroundImage: `url('${activeSidebarEntry.panelSrc}')`,
+                                            backgroundImage: "url('/images/ui/title_subpanel.svg')",
                                             backgroundRepeat: 'no-repeat',
                                             backgroundPosition: 'center',
                                             backgroundSize: '100% 100%',
@@ -1297,6 +1332,7 @@ export default function Page() {
                                                     userSelect: 'none',
                                                     pointerEvents: 'none',
                                                     flexShrink: 0,
+                                                    marginTop: '-6px',
                                                 }}
                                                 draggable={false}
                                             />
@@ -1307,6 +1343,7 @@ export default function Page() {
                                             color: '#0f172a',
                                             fontWeight: 700,
                                             flexShrink: 0,
+                                            marginTop: '-6px',
                                         }}>
                                             {activeSidebarEntry.label}
                                         </span>
@@ -1425,7 +1462,7 @@ export default function Page() {
                                         padding: '0px',
                                     }}>
                                         {eyeCatalog.map((item, index) => {
-                                            const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds();
+                                            const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds(item.id, item.src);
                                             const contentWidth = Math.max(1, visibleBounds.maxX - visibleBounds.minX + 1);
                                             const contentHeight = Math.max(1, visibleBounds.maxY - visibleBounds.minY + 1);
                                             const sidebarScale = Math.max(
@@ -1439,12 +1476,6 @@ export default function Page() {
                                                 ),
                                             );
 
-                                            const contentCenterX = (visibleBounds.minX + visibleBounds.maxX) / 2;
-                                            const contentCenterY = (visibleBounds.minY + visibleBounds.maxY) / 2;
-                                            const baseCenter = PLACED_OBJECT_SIZE / 2;
-                                            const offsetX = ((baseCenter - contentCenterX) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
-                                            const offsetY = ((baseCenter - contentCenterY) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
-
                                             const displaySrc = (item as any).previewSrc || item.src;
 
                                             return (
@@ -1455,7 +1486,7 @@ export default function Page() {
                                                     style={{
                                                         width: '100%',
                                                         backgroundColor: 'transparent',
-                                                        backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
+                                                        backgroundImage: `url('/images/ui/${(index % SIDEBAR_PANEL_VARIANTS) + 1}.svg')`,
                                                         backgroundRepeat: 'no-repeat',
                                                         backgroundPosition: 'center',
                                                         backgroundSize: '100% 100%',
@@ -1467,7 +1498,7 @@ export default function Page() {
                                                         flexDirection: 'column',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        minHeight: '120px',
+                                                        minHeight: `${SIDEBAR_EYES_ITEM_MIN_HEIGHT}px`,
                                                         minWidth: '120px',
                                                         overflow: 'hidden',
                                                     }}
@@ -1479,10 +1510,11 @@ export default function Page() {
                                                             width: `${SIDEBAR_PREVIEW_SIZE}px`,
                                                             height: `${SIDEBAR_PREVIEW_SIZE}px`,
                                                             objectFit: 'contain',
+                                                            objectPosition: 'center bottom',
                                                             pointerEvents: 'none',
                                                             userSelect: 'none',
-                                                            transform: `translate(${offsetX}px, ${offsetY}px) scale(${sidebarScale * 1.2})`,
-                                                            transformOrigin: 'center center',
+                                                            transform: `translateY(${SIDEBAR_PREVIEW_VERTICAL_LIFT_PX}px) scale(${sidebarScale * SIDEBAR_PREVIEW_SCALE_MULTIPLIER})`,
+                                                            transformOrigin: 'center bottom',
                                                         }}
                                                         draggable={false}
                                                     />
@@ -1500,25 +1532,19 @@ export default function Page() {
                                     gap: '0px',
                                 }}>
                                     {objectCatalog.map((item, index) => {
-                                        const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds();
+                                        const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds(item.id, item.src);
                                         const contentWidth = Math.max(1, visibleBounds.maxX - visibleBounds.minX + 1);
                                         const contentHeight = Math.max(1, visibleBounds.maxY - visibleBounds.minY + 1);
                                         const sidebarScale = Math.max(
                                             1,
                                             Math.min(
-                                                3.5,
+                                                SIDEBAR_PREVIEW_MAX_SCALE,
                                                 Math.min(
-                                                    (PLACED_OBJECT_SIZE * 0.86) / contentWidth,
-                                                    (PLACED_OBJECT_SIZE * 0.86) / contentHeight,
+                                                    (PLACED_OBJECT_SIZE * SIDEBAR_PREVIEW_CONTENT_SCALE) / contentWidth,
+                                                    (PLACED_OBJECT_SIZE * SIDEBAR_PREVIEW_CONTENT_SCALE) / contentHeight,
                                                 ),
                                             ),
                                         );
-
-                                        const contentCenterX = (visibleBounds.minX + visibleBounds.maxX) / 2;
-                                        const contentCenterY = (visibleBounds.minY + visibleBounds.maxY) / 2;
-                                        const baseCenter = PLACED_OBJECT_SIZE / 2;
-                                        const offsetX = ((baseCenter - contentCenterX) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
-                                        const offsetY = ((baseCenter - contentCenterY) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
 
                                         return (
                                             <button
@@ -1528,7 +1554,7 @@ export default function Page() {
                                                 style={{
                                                     width: '100%',
                                                     backgroundColor: 'transparent',
-                                                    backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
+                                                    backgroundImage: `url('/images/ui/${(index % SIDEBAR_PANEL_VARIANTS) + 1}.svg')`,
                                                     backgroundRepeat: 'no-repeat',
                                                     backgroundPosition: 'center',
                                                     backgroundSize: '100% 100%',
@@ -1541,7 +1567,7 @@ export default function Page() {
                                                     flexDirection: 'column',
                                                     alignItems: 'center',
                                                     gap: '0px',
-                                                    minHeight: '112px',
+                                                    minHeight: `${SIDEBAR_PROPS_ITEM_MIN_HEIGHT}px`,
                                                     overflow: 'hidden',
                                                 }}
                                             >
@@ -1552,9 +1578,10 @@ export default function Page() {
                                                         width: `${SIDEBAR_PREVIEW_SIZE}px`,
                                                         height: `${SIDEBAR_PREVIEW_SIZE}px`,
                                                         objectFit: 'contain',
+                                                        objectPosition: 'center center',
                                                         pointerEvents: 'none',
                                                         userSelect: 'none',
-                                                        transform: `translate(${offsetX}px, ${offsetY}px) scale(${sidebarScale})`,
+                                                        transform: `scale(${sidebarScale})`,
                                                         transformOrigin: 'center center',
                                                     }}
                                                     draggable={false}
@@ -1572,25 +1599,19 @@ export default function Page() {
                                     gap: '0px',
                                 }}>
                                     {mouthCatalog.map((item, index) => {
-                                        const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds();
+                                        const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds(item.id, item.src);
                                         const contentWidth = Math.max(1, visibleBounds.maxX - visibleBounds.minX + 1);
                                         const contentHeight = Math.max(1, visibleBounds.maxY - visibleBounds.minY + 1);
                                         const sidebarScale = Math.max(
                                             1,
                                             Math.min(
-                                                3.5,
+                                                SIDEBAR_PREVIEW_MAX_SCALE,
                                                 Math.min(
-                                                    (PLACED_OBJECT_SIZE * 0.86) / contentWidth,
-                                                    (PLACED_OBJECT_SIZE * 0.86) / contentHeight,
+                                                    (PLACED_OBJECT_SIZE * SIDEBAR_PREVIEW_CONTENT_SCALE) / contentWidth,
+                                                    (PLACED_OBJECT_SIZE * SIDEBAR_PREVIEW_CONTENT_SCALE) / contentHeight,
                                                 ),
                                             ),
                                         );
-
-                                        const contentCenterX = (visibleBounds.minX + visibleBounds.maxX) / 2;
-                                        const contentCenterY = (visibleBounds.minY + visibleBounds.maxY) / 2;
-                                        const baseCenter = PLACED_OBJECT_SIZE / 2;
-                                        const offsetX = ((baseCenter - contentCenterX) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
-                                        const offsetY = ((baseCenter - contentCenterY) / PLACED_OBJECT_SIZE) * SIDEBAR_PREVIEW_SIZE;
 
                                         const displaySrc = (item as any).previewSrc || item.src;
 
@@ -1602,7 +1623,7 @@ export default function Page() {
                                                 style={{
                                                     width: '100%',
                                                     backgroundColor: 'transparent',
-                                                    backgroundImage: `url('/images/ui/${(index % 6) + 1}.svg')`,
+                                                    backgroundImage: `url('/images/ui/${(index % SIDEBAR_PANEL_VARIANTS) + 1}.svg')`,
                                                     backgroundRepeat: 'no-repeat',
                                                     backgroundPosition: 'center',
                                                     backgroundSize: '100% 100%',
@@ -1614,7 +1635,7 @@ export default function Page() {
                                                     flexDirection: 'column',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    minHeight: '118px',
+                                                    minHeight: `${SIDEBAR_MOUTH_ITEM_MIN_HEIGHT}px`,
                                                     overflow: 'hidden',
                                                 }}
                                             >
@@ -1625,10 +1646,11 @@ export default function Page() {
                                                         width: `${SIDEBAR_PREVIEW_SIZE}px`,
                                                         height: `${SIDEBAR_PREVIEW_SIZE}px`,
                                                         objectFit: 'contain',
+                                                        objectPosition: 'center bottom',
                                                         pointerEvents: 'none',
                                                         userSelect: 'none',
-                                                        transform: `translate(${offsetX}px, ${offsetY}px) scale(${sidebarScale})`,
-                                                        transformOrigin: 'center center',
+                                                        transform: `translateY(${SIDEBAR_PREVIEW_VERTICAL_LIFT_PX}px) scale(${sidebarScale})`,
+                                                        transformOrigin: 'center bottom',
                                                     }}
                                                     draggable={false}
                                                 />
