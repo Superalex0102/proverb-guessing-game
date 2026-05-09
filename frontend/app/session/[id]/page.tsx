@@ -2,33 +2,24 @@
 
 import { Code, Link } from '@nextui-org/react';
 import { useParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
 import { isPlacedObjectArray, PlacedObject } from '@/lib/placed-object';
 import { getSocket } from '@/lib/socket';
 import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
 
-type VisibleBounds = {
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
-};
-
 export default function Page() {
-    const TV_OBJECT_SCALE = 1;
-    const FACE_OVERLAY_SIZE = 240;
-    const FACE_OVERLAY_CANVAS_SIZE = 240;
     const CHARACTER_OBJECT_ID = 'karakter_siman.svg';
     const params = useParams<{ id: string }>();
+
     const [sessionExists, setSessionExists] = useState<boolean | null>(null);
     const [phase, setPhase] = useState<SessionPhase>('lobby');
     const [placedObjects, setPlacedObjects] = useState<PlacedObject[]>([]);
     const [sourceBoardSize, setSourceBoardSize] = useState<{ width: number; height: number } | null>(null);
     const [showLink, setShowLink] = useState(false);
-    const [overlayBoundsBySrc, setOverlayBoundsBySrc] = useState<Record<string, VisibleBounds>>({});
 
+    const tvBoardContainerRef = useRef<HTMLDivElement>(null);
 
     const sessionId = useMemo(() => {
         const value = params?.id;
@@ -83,33 +74,24 @@ export default function Page() {
             if (isSessionPhase(payload?.phase)) setPhase(payload.phase);
         };
 
-        const handleObjectsUpdate = (payload: { objects?: unknown; boardWidth?: unknown; boardHeight?: unknown }) => {
-            if (isPlacedObjectArray(payload?.objects)) {
-                setPlacedObjects(payload.objects);
-            }
-
-            const boardWidth = payload?.boardWidth;
-            const boardHeight = payload?.boardHeight;
+        const updateBoardSizeIfPresent = (payload: any) => {
             if (
-                typeof boardWidth === 'number' && Number.isFinite(boardWidth) && boardWidth > 0 &&
-                typeof boardHeight === 'number' && Number.isFinite(boardHeight) && boardHeight > 0
+                typeof payload?.boardWidth === 'number' && Number.isFinite(payload.boardWidth) && payload.boardWidth > 0 &&
+                typeof payload?.boardHeight === 'number' && Number.isFinite(payload.boardHeight) && payload.boardHeight > 0
             ) {
-                setSourceBoardSize({ width: boardWidth, height: boardHeight });
+                setSourceBoardSize({ width: payload.boardWidth, height: payload.boardHeight });
             }
+        }
+
+        const handleObjectsUpdate = (payload: { objects?: unknown; boardWidth?: unknown; boardHeight?: unknown }) => {
+            if (isPlacedObjectArray(payload?.objects)) setPlacedObjects(payload.objects);
+            updateBoardSizeIfPresent(payload);
         };
 
         const handleSessionState = (payload: { phase?: unknown; objects?: unknown; boardWidth?: unknown; boardHeight?: unknown }) => {
             if (isSessionPhase(payload?.phase)) setPhase(payload.phase);
             if (isPlacedObjectArray(payload?.objects)) setPlacedObjects(payload.objects);
-
-            const boardWidth = payload?.boardWidth;
-            const boardHeight = payload?.boardHeight;
-            if (
-                typeof boardWidth === 'number' && Number.isFinite(boardWidth) && boardWidth > 0 &&
-                typeof boardHeight === 'number' && Number.isFinite(boardHeight) && boardHeight > 0
-            ) {
-                setSourceBoardSize({ width: boardWidth, height: boardHeight });
-            }
+            updateBoardSizeIfPresent(payload);
         };
 
         joinRoom();
@@ -151,127 +133,42 @@ export default function Page() {
         };
     }, []);
 
-    const isGameActive = phase !== 'lobby';
+    const currentBoardSize = useMemo(() => {
+        if (sourceBoardSize) return sourceBoardSize;
 
-    const isFaceOverlay = (src: string) =>
-        src.includes('/images/characters/szemek/') ||
-        src.includes('/images/characters/szaj/');
+        const referenceObj = placedObjects.find(obj =>
+            typeof obj.xPct === 'number' && obj.xPct > 0 && typeof obj.x === 'number' && obj.x > 0 &&
+            typeof obj.yPct === 'number' && obj.yPct > 0 && typeof obj.y === 'number' && obj.y > 0
+        );
 
-    const getRenderedPosition = (item: PlacedObject) => {
-        const left = item.xPct !== undefined
-            ? `${item.xPct}%`
-            : (sourceBoardSize ? `${(item.x / sourceBoardSize.width) * 100}%` : `${item.x}px`);
-        const top = item.yPct !== undefined
-            ? `${item.yPct}%`
-            : (sourceBoardSize ? `${(item.y / sourceBoardSize.height) * 100}%` : `${item.y}px`);
-
-        return { left, top };
-    };
-
-    useEffect(() => {
-        const overlaySrcs = Array.from(new Set(
-            placedObjects
-                .filter((item) => isFaceOverlay(item.src))
-                .map((item) => item.src),
-        ));
-
-        if (overlaySrcs.length === 0) {
-            setOverlayBoundsBySrc({});
-            return;
+        if (referenceObj) {
+            return {
+                width: Math.max(100, Math.round((referenceObj.x / referenceObj.xPct!) * 100)),
+                height: Math.max(100, Math.round((referenceObj.y / referenceObj.yPct!) * 100))
+            };
         }
 
-        let isCancelled = false;
+        return { width: 390, height: 844 };
+    }, [sourceBoardSize, placedObjects]);
 
-        const measureBounds = async (src: string): Promise<VisibleBounds | null> => {
-            return new Promise((resolve) => {
-                const image = new Image();
+    const tvScale = useMemo(() => {
+        if (typeof window === 'undefined') return 1;
 
-                image.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = FACE_OVERLAY_CANVAS_SIZE;
-                    canvas.height = FACE_OVERLAY_CANVAS_SIZE;
+        const containerW = window.innerWidth - 48;
+        const containerH = window.innerHeight - 48 - 80 - 80;
 
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) {
-                        resolve(null);
-                        return;
-                    }
+        const scaleX = containerW / currentBoardSize.width;
+        const scaleY = containerH / currentBoardSize.height;
+        const scale = Math.min(scaleX, scaleY);
 
-                    const scale = Math.min(
-                        FACE_OVERLAY_CANVAS_SIZE / image.naturalWidth,
-                        FACE_OVERLAY_CANVAS_SIZE / image.naturalHeight,
-                    );
+        return isFinite(scale) && scale > 0 ? scale : 1;
+    }, [currentBoardSize]);
 
-                    const drawWidth = image.naturalWidth * scale;
-                    const drawHeight = image.naturalHeight * scale;
-                    const drawX = (FACE_OVERLAY_CANVAS_SIZE - drawWidth) / 2;
-                    const drawY = (FACE_OVERLAY_CANVAS_SIZE - drawHeight) / 2;
-
-                    ctx.clearRect(0, 0, FACE_OVERLAY_CANVAS_SIZE, FACE_OVERLAY_CANVAS_SIZE);
-                    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
-
-                    const pixels = ctx.getImageData(0, 0, FACE_OVERLAY_CANVAS_SIZE, FACE_OVERLAY_CANVAS_SIZE).data;
-
-                    let minX = FACE_OVERLAY_CANVAS_SIZE;
-                    let minY = FACE_OVERLAY_CANVAS_SIZE;
-                    let maxX = -1;
-                    let maxY = -1;
-
-                    for (let y = 0; y < FACE_OVERLAY_CANVAS_SIZE; y += 1) {
-                        for (let x = 0; x < FACE_OVERLAY_CANVAS_SIZE; x += 1) {
-                            const alpha = pixels[(y * FACE_OVERLAY_CANVAS_SIZE + x) * 4 + 3];
-                            if (alpha <= 16) continue;
-
-                            if (x < minX) minX = x;
-                            if (x > maxX) maxX = x;
-                            if (y < minY) minY = y;
-                            if (y > maxY) maxY = y;
-                        }
-                    }
-
-                    if (maxX < 0 || maxY < 0) {
-                        resolve(null);
-                        return;
-                    }
-
-                    resolve({ minX, maxX, minY, maxY });
-                };
-
-                image.onerror = () => resolve(null);
-                image.src = src;
-            });
-        };
-
-        const loadOverlayBounds = async () => {
-            const entries = await Promise.all(
-                overlaySrcs.map(async (src) => [src, await measureBounds(src)] as const),
-            );
-
-            if (isCancelled) return;
-
-            setOverlayBoundsBySrc((prev) => {
-                const next = { ...prev };
-
-                for (const [src, bounds] of entries) {
-                    if (bounds) {
-                        next[src] = bounds;
-                    }
-                }
-
-                return next;
-            });
-        };
-
-        void loadOverlayBounds();
-
-        return () => {
-            isCancelled = true;
-        };
-    }, [placedObjects]);
+    const isGameActive = phase !== 'lobby';
 
     if (sessionExists === null) {
         return (
-            <div className="fixed inset-0 flex items-center justify-center overflow-hidden p-8">
+            <div className="fixed inset-0 flex items-center justify-center overflow-hidden p-8 bg-slate-100">
                 <p>Loading session...</p>
             </div>
         );
@@ -279,7 +176,7 @@ export default function Page() {
 
     if (!sessionExists) {
         return (
-            <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 overflow-hidden p-8">
+            <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 overflow-hidden p-8 bg-slate-100">
                 <h1 className="text-2xl font-semibold">Session not found</h1>
                 <p>Please generate a new session from the home page.</p>
                 <Link href="/">Go back</Link>
@@ -288,113 +185,151 @@ export default function Page() {
     }
 
     return (
-        <div className="fixed inset-0 overflow-hidden">
-            <div className="flex h-full flex-col items-center gap-6 overflow-hidden p-8">
-            <h1>Session: {sessionId}</h1>
-            <p className="text-default-600">
-                Current phase: <strong>{phase}</strong>
-            </p>
+        <div className="fixed inset-0 overflow-hidden bg-slate-100">
+            <div className="flex h-full flex-col gap-4 p-6">
 
-            {/* Live construction board — always visible */}
-            <div className="w-full max-w-[1152px] rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p className="mb-3 text-sm font-semibold text-slate-600">Live construction board</p>
-                <div className="h-[460px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white" style={{ display: 'flex', flexDirection: 'row' }}>
-                    <div className="relative" style={{ flex: 1, background: 'radial-gradient(circle at top left, #f8fafc, #e2e8f0)' }}>
-                        {placedObjects.length === 0 && (
-                            <div className="flex h-full w-full items-center justify-center text-sm text-slate-400">
+                <span style={{
+                    position: 'absolute',
+                    left: '10px',
+                    bottom: '8px',
+                    fontSize: '20px',
+                    color: '#64748b',
+                    whiteSpace: 'nowrap',
+                    fontFamily: 'monospace',
+                    pointerEvents: 'none',
+                    zIndex: 100,
+                }}>
+                    {sessionId}
+                </span>
+
+                {/* Live construction board */}
+                <div className="flex-1 w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col gap-2 overflow-hidden">
+
+                    <div
+                        ref={tvBoardContainerRef}
+                        className="flex-1 w-full rounded-lg relative overflow-hidden"
+                        style={{
+                            background: '#dbf5f9',
+                            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.05)'
+                        }}
+                    >
+                        {placedObjects.length === 0 ? (
+                            <div className="absolute inset-0 flex items-center justify-center text-slate-400">
                                 Várakozunk a játékosra...
                             </div>
-                        )}
+                        ) : (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    left: '50%',
+                                    top: '50%',
+                                    width: `${currentBoardSize.width}px`,
+                                    height: `${currentBoardSize.height}px`,
+                                    transform: `translate(-50%, -50%) scale(${tvScale})`,
+                                    transformOrigin: 'center center',
+                                }}
+                            >
+                                {placedObjects.map((item) => {
+                                    const isEyes = item.objectId === 'character-eyes';
+                                    const isMouth = item.objectId === 'character-mouth';
+                                    const objectSize = item.objectId === CHARACTER_OBJECT_ID ? 320 : isEyes ? 160 : isMouth ? 180 : 240;
 
-                        {placedObjects.map((item) => {
-                            const { left, top } = getRenderedPosition(item);
-                            const isOverlay = isFaceOverlay(item.src);
-                            const character = placedObjects.find((candidate) => candidate.objectId === CHARACTER_OBJECT_ID);
-                            const characterPosition = character ? getRenderedPosition(character) : null;
-                            const overlayLeft = isOverlay && characterPosition ? characterPosition.left : left;
-                            const overlayTop = isOverlay && characterPosition ? characterPosition.top : top;
-                            const overlayBounds = overlayBoundsBySrc[item.src];
-                            const overlayOffsetX = overlayBounds
-                                ? (FACE_OVERLAY_CANVAS_SIZE / 2) - ((overlayBounds.minX + overlayBounds.maxX) / 2)
-                                : 0;
-                            const overlayOffsetY = overlayBounds
-                                ? (FACE_OVERLAY_CANVAS_SIZE / 2) - ((overlayBounds.minY + overlayBounds.maxY) / 2)
-                                : 0;
+                                    const renderX = isEyes ? item.x + 78 : isMouth ? item.x + 68 : item.x;
+                                    const renderY = isEyes ? item.y - 9 : isMouth ? item.y + 6 : item.y;
 
-                            return (
-                                <img
-                                    key={item.id}
-                                    src={item.src}
-                                    alt={item.name}
-                                    className="select-none object-contain"
-                                    style={{
-                                        position: 'absolute',
-                                        left: overlayLeft,
-                                        top: overlayTop,
-                                        width: isOverlay
-                                            ? `${FACE_OVERLAY_SIZE}px`
-                                            : item.sizeXPct !== undefined
-                                                ? `${item.sizeXPct * TV_OBJECT_SCALE}%`
-                                                : (item.sizePct !== undefined ? `${item.sizePct * TV_OBJECT_SCALE}%` : '240px'),
-                                        height: isOverlay
-                                            ? `${FACE_OVERLAY_SIZE}px`
-                                            : item.sizeYPct !== undefined
-                                                ? `${item.sizeYPct * TV_OBJECT_SCALE}%`
-                                                : (item.sizePct !== undefined ? `${item.sizePct * TV_OBJECT_SCALE}%` : '240px'),
-                                        transform: isOverlay && (overlayOffsetX !== 0 || overlayOffsetY !== 0)
-                                            ? `translate(${overlayOffsetX}px, ${overlayOffsetY}px)`
-                                            : undefined,
-                                        transformOrigin: 'center center',
-                                    }}
-                                    draggable={false}
-                                />
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            style={{
+                                                position: 'absolute',
+                                                left: `${renderX}px`,
+                                                top: `${renderY}px`,
+                                                width: `${objectSize}px`,
+                                                height: `${objectSize}px`,
+                                            }}
+                                        >
+                                            <img
+                                                src={item.src}
+                                                alt={item.name}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: 0,
+                                                    top: 0,
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    objectFit: 'contain',
+                                                    pointerEvents: 'none',
+                                                }}
+                                                draggable={false}
+                                            />
 
-            {/* QR code + link — hidden once game starts */}
-            {!isGameActive && (
-                <>
-                    <div className="p-4 bg-white rounded-lg shadow">
-                        <QRCodeSVG value={sessionUrl} size={200} />
-                    </div>
+                                            {item.eyesSrc && (
+                                                <img
+                                                    src={item.eyesSrc}
+                                                    alt="Szem"
+                                                    style={{
+                                                        position: 'absolute',
+                                                        width: '160px',
+                                                        height: '160px',
+                                                        left: '78px',
+                                                        top: '-9px',
+                                                        pointerEvents: 'none',
+                                                    }}
+                                                    draggable={false}
+                                                />
+                                            )}
 
-                    <div className="flex flex-col items-center gap-4">
-                        <button
-                            type="button"
-                            onClick={() => setShowLink(!showLink)}
-                            style={{
-                                minHeight: '62px',
-                                minWidth: '320px',
-                                border: 'none',
-                                backgroundColor: 'transparent',
-                                backgroundImage: "url('/images/ui/button.svg')",
-                                backgroundRepeat: 'no-repeat',
-                                backgroundPosition: 'center',
-                                backgroundSize: '100% 100%',
-                                padding: '12px 32px',
-                                fontSize: '18px',
-                                fontWeight: 700,
-                                color: '#0f172a',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            {showLink ? 'Hide Link' : "Can't scan the QR code?"}
-                        </button>
-
-                        {showLink && (
-                            <div className="flex flex-col items-center gap-2 animate-appearance-in">
-                                <p className="text-small text-default-500">Manual Link:</p>
-                                <Link isExternal href={sessionUrl} showAnchorIcon>
-                                    <Code size="lg">{sessionUrl}</Code>
-                                </Link>
+                                            {item.mouthSrc && (
+                                                <img
+                                                    src={item.mouthSrc}
+                                                    alt="Száj"
+                                                    style={{
+                                                        position: 'absolute',
+                                                        width: '180px',
+                                                        height: '180px',
+                                                        left: '68px',
+                                                        top: '6px',
+                                                        pointerEvents: 'none',
+                                                    }}
+                                                    draggable={false}
+                                                />
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
-                </>
-            )}
+                </div>
+
+                {/* QR code */}
+                {!isGameActive && (
+                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/95 backdrop-blur-sm gap-6">
+                        <h2 className="text-3xl font-bold text-slate-800">Csatlakozz a játékhoz!</h2>
+                        <div className="p-6 bg-white rounded-2xl shadow-xl border border-slate-100">
+                            <QRCodeSVG value={sessionUrl} size={280} />
+                        </div>
+
+                        <div className="flex flex-col items-center gap-4 mt-4">
+                            <button
+                                type="button"
+                                onClick={() => setShowLink(!showLink)}
+                                className="text-slate-500 hover:text-slate-800 underline underline-offset-4"
+                            >
+                                {showLink ? 'Link elrejtése' : "Nem tudod beolvasni a QR kódot?"}
+                            </button>
+
+                            {showLink && (
+                                <div className="flex flex-col items-center gap-2 animate-appearance-in bg-slate-100 p-4 rounded-lg">
+                                    <p className="text-sm text-slate-500 font-semibold uppercase tracking-wider">Kézi link:</p>
+                                    <Link isExternal href={sessionUrl} showAnchorIcon className="text-xl">
+                                        <Code size="lg" className="bg-white">{sessionUrl}</Code>
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

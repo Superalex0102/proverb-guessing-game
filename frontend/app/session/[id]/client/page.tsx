@@ -102,14 +102,6 @@ export default function Page() {
     const SIDEBAR_PROPS_ITEM_MIN_HEIGHT = 112;
     const SIDEBAR_MOUTH_ITEM_MIN_HEIGHT = 118;
     const CENTER_CHARACTER_Y_OFFSET = 40;
-    const APPLIED_EYES_SIZE = 160;
-    const APPLIED_EYES_X_OFFSET = 38;
-    const APPLIED_EYES_Y_OFFSET = -45;
-    const APPLIED_MOUTH_SIZE = 180;
-    const APPLIED_MOUTH_X_OFFSET = 38;
-    const APPLIED_MOUTH_Y_OFFSET = -20;
-    const APPLIED_EYES_OBJECT_ID = 'character-eyes';
-    const APPLIED_MOUTH_OBJECT_ID = 'character-mouth';
     const TIMELINE_HEIGHT_PX = 18;
     const TIMELINE_FILL_INSET = {
         left: '1.2%',
@@ -553,75 +545,31 @@ export default function Page() {
 
     useEffect(() => {
         if (!selectedEyeId) return;
-
         setPlacedObjects((prev) => {
-            const character = prev.find((item) => item.objectId === CHARACTER_OBJECT_ID);
-            if (!character) return prev;
-
             const selectedEye = eyeCatalog.find((item) => item.id === selectedEyeId);
             if (!selectedEye) return prev;
 
-            const existingEyes = prev.find((item) => item.objectId === APPLIED_EYES_OBJECT_ID);
-            if (
-                existingEyes &&
-                existingEyes.src === selectedEye.src &&
-                existingEyes.x === character.x &&
-                existingEyes.y === character.y
-            ) {
-                return prev;
-            }
-
-            const withoutEyes = prev.filter((item) => item.objectId !== APPLIED_EYES_OBJECT_ID);
-            return [
-                ...withoutEyes,
-                {
-                    id: createPlacedObjectId(APPLIED_EYES_OBJECT_ID),
-                    objectId: APPLIED_EYES_OBJECT_ID,
-                    src: selectedEye.src,
-                    name: selectedEye.name,
-                    x: character.x,
-                    y: character.y,
-                    isMoveable: false,
-                }
-            ];
+            return prev.map((obj) =>
+                obj.objectId === CHARACTER_OBJECT_ID
+                    ? { ...obj, eyesSrc: selectedEye.src }
+                    : obj
+            );
         });
-    }, [APPLIED_EYES_OBJECT_ID, CHARACTER_OBJECT_ID, eyeCatalog, selectedEyeId]);
+    }, [CHARACTER_OBJECT_ID, eyeCatalog, selectedEyeId]);
 
     useEffect(() => {
         if (!selectedMouthId) return;
-
         setPlacedObjects((prev) => {
-            const character = prev.find((item) => item.objectId === CHARACTER_OBJECT_ID);
-            if (!character) return prev;
-
             const selectedMouth = mouthCatalog.find((item) => item.id === selectedMouthId);
             if (!selectedMouth) return prev;
 
-            const existingMouth = prev.find((item) => item.objectId === APPLIED_MOUTH_OBJECT_ID);
-            if (
-                existingMouth &&
-                existingMouth.src === selectedMouth.src &&
-                existingMouth.x === character.x &&
-                existingMouth.y === character.y
-            ) {
-                return prev;
-            }
-
-            const withoutMouth = prev.filter((item) => item.objectId !== APPLIED_MOUTH_OBJECT_ID);
-            return [
-                ...withoutMouth,
-                {
-                    id: createPlacedObjectId(APPLIED_MOUTH_OBJECT_ID),
-                    objectId: APPLIED_MOUTH_OBJECT_ID,
-                    src: selectedMouth.src,
-                    name: selectedMouth.name,
-                    x: character.x,
-                    y: character.y,
-                    isMoveable: false,
-                }
-            ];
+            return prev.map((obj) =>
+                obj.objectId === CHARACTER_OBJECT_ID
+                    ? { ...obj, mouthSrc: selectedMouth.src }
+                    : obj
+            );
         });
-    }, [APPLIED_MOUTH_OBJECT_ID, CHARACTER_OBJECT_ID, mouthCatalog, selectedMouthId]);
+    }, [CHARACTER_OBJECT_ID, mouthCatalog, selectedMouthId]);
 
 
     useEffect(() => {
@@ -1240,38 +1188,16 @@ export default function Page() {
 
                             {placedObjects.map((item) => {
                                 const objectSize = getObjectSize(item.objectId, item.src);
-
-                                let baseZIndex = 10;
-                                if (item.objectId === APPLIED_EYES_OBJECT_ID || item.objectId === APPLIED_MOUTH_OBJECT_ID) {
-                                    baseZIndex = 20;
-                                } else if (item.objectId !== CHARACTER_OBJECT_ID) {
-                                    baseZIndex = 30;
-                                }
+                                const baseZIndex = item.objectId !== CHARACTER_OBJECT_ID ? 30 : 10;
 
                                 return (
                                     <div
                                         key={item.id}
                                         style={{
-                                            left: item.objectId === APPLIED_EYES_OBJECT_ID
-                                                ? item.x + APPLIED_EYES_X_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_EYES_SIZE) / 2)
-                                                : item.objectId === APPLIED_MOUTH_OBJECT_ID
-                                                    ? item.x + APPLIED_MOUTH_X_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_MOUTH_SIZE) / 2)
-                                                    : item.x,
-                                            top: item.objectId === APPLIED_EYES_OBJECT_ID
-                                                ? item.y + APPLIED_EYES_Y_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_EYES_SIZE) / 2)
-                                                : item.objectId === APPLIED_MOUTH_OBJECT_ID
-                                                    ? item.y + APPLIED_MOUTH_Y_OFFSET + ((PLACED_OBJECT_SIZE - APPLIED_MOUTH_SIZE) / 2)
-                                                    : item.y,
-                                            width: `${item.objectId === APPLIED_EYES_OBJECT_ID
-                                                ? APPLIED_EYES_SIZE
-                                                : item.objectId === APPLIED_MOUTH_OBJECT_ID
-                                                    ? APPLIED_MOUTH_SIZE
-                                                    : objectSize}px`,
-                                            height: `${item.objectId === APPLIED_EYES_OBJECT_ID
-                                                ? APPLIED_EYES_SIZE
-                                                : item.objectId === APPLIED_MOUTH_OBJECT_ID
-                                                    ? APPLIED_MOUTH_SIZE
-                                                    : objectSize}px`,
+                                            left: item.x,
+                                            top: item.y,
+                                            width: `${objectSize}px`,
+                                            height: `${objectSize}px`,
                                             zIndex: draggingObjectId === item.id ? 50 : baseZIndex,
                                             position: 'absolute',
                                             pointerEvents: 'none',
@@ -1282,6 +1208,9 @@ export default function Page() {
                                             src={item.src}
                                             alt={item.name}
                                             style={{
+                                                position: 'absolute',
+                                                left: 0,
+                                                top: 0,
                                                 width: '100%',
                                                 height: '100%',
                                                 objectFit: 'contain',
@@ -1292,10 +1221,43 @@ export default function Page() {
                                                     : item.isMoveable === false
                                                         ? 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.15))'
                                                         : 'none',
-                                                marginTop: item.objectId === APPLIED_EYES_OBJECT_ID ? '-4px' : item.objectId === APPLIED_MOUTH_OBJECT_ID ? '-4px' : 0,
                                             }}
                                             draggable={false}
                                         />
+
+                                        {item.eyesSrc && (
+                                            <img
+                                                src={item.eyesSrc}
+                                                alt="Szem"
+                                                style={{
+                                                    position: 'absolute',
+                                                    width: '160px',
+                                                    height: '160px',
+                                                    left: '78px',
+                                                    top: '-9px',
+                                                    pointerEvents: 'none',
+                                                    userSelect: 'none',
+                                                }}
+                                                draggable={false}
+                                            />
+                                        )}
+
+                                        {item.mouthSrc && (
+                                            <img
+                                                src={item.mouthSrc}
+                                                alt="Száj"
+                                                style={{
+                                                    position: 'absolute',
+                                                    width: '180px',
+                                                    height: '180px',
+                                                    left: '68px',
+                                                    top: '6px',
+                                                    pointerEvents: 'none',
+                                                    userSelect: 'none',
+                                                }}
+                                                draggable={false}
+                                            />
+                                        )}
                                     </div>
                                 );
                             })}

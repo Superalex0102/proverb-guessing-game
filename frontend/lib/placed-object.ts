@@ -11,6 +11,8 @@ export type PlacedObject = {
   sizeYPct?: number;
   sizePct?: number;
   isMoveable?: boolean;
+  eyesSrc?: string;
+  mouthSrc?: string;
 };
 
 export function isPlacedObject(value: unknown): value is PlacedObject {
