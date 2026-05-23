@@ -87,12 +87,17 @@ export function GameSidebar({
                     minHeight: '56px',
                     display: 'flex',
                     alignItems: 'stretch',
+                    position: 'relative',
+                    marginBottom: '-8px',
+                    zIndex: 2,
                 }}>
                     <button
                         type="button"
                         onClick={handleBackClick}
                         style={{
-                            width: '90%',
+                            zIndex: 2,
+                            position: 'relative',
+                            width: 'calc(100% - 38px)',
                             minHeight: '75px',
                             border: 'none',
                             backgroundColor: 'transparent',
@@ -106,7 +111,6 @@ export function GameSidebar({
                             justifyContent: 'flex-start',
                             gap: '10px',
                             padding: '6px 14px',
-                            flexShrink: 0,
                         }}
                         aria-label="Vissza"
                     >
@@ -141,17 +145,21 @@ export function GameSidebar({
                         type="button"
                         onClick={handleBackClick}
                         style={{
-                            width: '15%',
-                            minHeight: '52px',
+                            zIndex: 1,
+                            position: 'absolute',
+                            right: '4px',
+                            top: '4px',
+                            bottom: '0',
+                            width: '44px',
                             border: 'none',
-                            borderRadius: '8px',
+                            borderRadius: '0 12px 0 0',
                             backgroundColor: '#7fb6b7',
                             cursor: 'pointer',
                             flexShrink: 0,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            paddingTop: '10px',
+                            paddingTop: '4px',
                         }}
                         aria-label="Vissza"
                     >
@@ -159,8 +167,8 @@ export function GameSidebar({
                             src="/images/ui/visszanyil.svg"
                             alt=""
                             style={{
-                                width: '86%',
-                                height: '86%',
+                                width: '100%',
+                                height: '100%',
                                 pointerEvents: 'none',
                             }}
                         />
@@ -229,7 +237,7 @@ export function GameSidebar({
             )}
 
             {activeSidebarMenu === 'eyes' && (
-                <div style={{ position: 'relative', width: '100%', padding: '0' }}>
+                <div style={{ position: 'relative', width: '100%', padding: '0', zIndex: 3 }}>
                     <div style={{
                         position: 'absolute',
                         top: '5px',
@@ -300,7 +308,7 @@ export function GameSidebar({
             )}
 
             {activeSidebarMenu === 'props' && (
-                <div style={{ position: 'relative', width: '100%', padding: '0' }}>
+                <div style={{ position: 'relative', width: '100%', padding: '0', zIndex: 3 }}>
                     <div style={{
                         position: 'absolute',
                         top: '5px',
@@ -445,7 +453,7 @@ export function GameSidebar({
             )}
 
             {activeSidebarMenu === 'mouth' && (
-                <div style={{ position: 'relative', width: '100%', padding: '0' }}>
+                <div style={{ position: 'relative', width: '100%', padding: '0', zIndex: 3 }}>
                     <div style={{
                         position: 'absolute',
                         top: '5px',
