@@ -1,14 +1,42 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 import { ConstructionBoard } from '../_components/ConstructionBoard';
 import { GameSidebar } from '../_components/GameSidebar';
 import { TIMELINE_FILL_INSET, TIMELINE_HEIGHT_PX, useGameSession } from '../_hooks/useGameSession';
 
+function useIsLandscape() {
+    const [isLandscape, setIsLandscape] = useState(true);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(orientation: landscape)');
+
+        const updateOrientation = () => {
+            setIsLandscape(mediaQuery.matches || window.innerWidth >= window.innerHeight);
+        };
+
+        updateOrientation();
+
+        mediaQuery.addEventListener('change', updateOrientation);
+        window.addEventListener('resize', updateOrientation);
+        window.addEventListener('orientationchange', updateOrientation);
+
+        return () => {
+            mediaQuery.removeEventListener('change', updateOrientation);
+            window.removeEventListener('resize', updateOrientation);
+            window.removeEventListener('orientationchange', updateOrientation);
+        };
+    }, []);
+
+    return isLandscape;
+}
+
 export default function Page() {
     const params = useParams<{ id: string }>();
     const sessionId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+    const isLandscape = useIsLandscape();
 
     const {
         sessionExists,
@@ -76,6 +104,99 @@ export default function Page() {
             }}>
                 <h1 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>Session not found</h1>
                 <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>Please ask the host to create a new game session.</p>
+            </div>
+        );
+    }
+
+    if (!isLandscape) {
+        return (
+            <div style={{
+                position: 'fixed',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                background: '#dbf5f9',
+                color: '#0f172a',
+                padding: '16px',
+                boxSizing: 'border-box',
+            }}>
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(127, 182, 183, 0.16) 0, rgba(127, 182, 183, 0.16) 12%, transparent 12%), radial-gradient(circle at 80% 15%, rgba(13, 148, 136, 0.12) 0, rgba(13, 148, 136, 0.12) 10%, transparent 10%), radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.08) 0, rgba(59, 130, 246, 0.08) 14%, transparent 14%)',
+                    opacity: 0.85,
+                    pointerEvents: 'none',
+                }} />
+
+                <div style={{
+                    position: 'relative',
+                    width: 'min(92vw, 760px)',
+                    minHeight: 'min(72vh, 520px)',
+                    padding: '26px 22px 22px',
+                    borderRadius: '24px',
+                    backgroundImage: "url('/images/ui/kozmondasos_panel.svg')",
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                    backgroundSize: '100% 100%',
+                    boxShadow: '0 18px 48px rgba(15, 23, 42, 0.14)',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '18px',
+                }}>
+                    <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '92px',
+                        height: '92px',
+                        borderRadius: '9999px',
+                        background: 'linear-gradient(180deg, #7fb6b7 0%, #0d9488 100%)',
+                        boxShadow: '0 10px 24px rgba(13, 148, 136, 0.22)',
+                        color: '#fff',
+                        fontSize: '40px',
+                        fontWeight: 800,
+                        border: '4px solid rgba(255, 255, 255, 0.55)',
+                    }}>
+                        ↻
+                    </div>
+
+                    <h1 style={{
+                        margin: 0,
+                        fontSize: 'clamp(30px, 4.2vw, 52px)',
+                        lineHeight: 1,
+                        letterSpacing: '0.02em',
+                        fontWeight: 800,
+                        color: '#0f172a',
+                    }}>
+                        Landscape mód szükséges
+                    </h1>
+
+                    <p style={{
+                        margin: '0',
+                        fontSize: 'clamp(16px, 2vw, 24px)',
+                        lineHeight: 1.45,
+                        color: '#1e293b',
+                        fontWeight: 600,
+                        maxWidth: '34ch',
+                    }}>
+                        A játék kizárólag vízszintes, landscape nézetben játszható.
+                    </p>
+
+                    <p style={{
+                        margin: '0',
+                        fontSize: 'clamp(14px, 1.7vw, 18px)',
+                        lineHeight: 1.5,
+                        color: '#475569',
+                        maxWidth: '44ch',
+                    }}>
+                        Forgasd el a készüléket landscape irányba, és amint vízszintes lesz a képernyő, a játék automatikusan megjelenik.
+                    </p>
+                </div>
             </div>
         );
     }
