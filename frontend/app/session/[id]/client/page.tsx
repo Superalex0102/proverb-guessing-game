@@ -996,55 +996,48 @@ export default function Page() {
 
                         <div style={{
                             width: 'min(88vw, 1160px)',
-                            padding: 0,
+                            minHeight: '72px',
+                            margin: '8px 4px -4px',
+                            borderRadius: '12px',
+                            backgroundImage: "url('/images/ui/kozmondasos_panel.svg')",
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            backgroundSize: '100% 100%',
+                            fontSize: 'clamp(20px, 2vw, 30px)',
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            lineHeight: 1.1,
+                            padding: '8px 52px 8px 12px',
+                            boxSizing: 'border-box',
                             position: 'relative',
                         }}>
-                            <div style={{
-                                width: '100%',
-                                minHeight: '52px',
-                                margin: '8px 4px -4px',
-                                borderRadius: '12px',
-                                backgroundImage: "url('/images/ui/kozmondasos_panel.svg')",
-                                backgroundRepeat: 'no-repeat',
-                                backgroundPosition: 'center',
-                                backgroundSize: '100% 100%',
-                                backgroundColor: 'transparent',
-                                border: 'none',
-                                fontSize: 'clamp(20px, 2vw, 30px)',
-                                fontWeight: 700,
-                                color: '#0f172a',
-                                textAlign: 'center',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                lineHeight: 1.1,
-                                backdropFilter: 'none',
-                                boxShadow: 'none',
-                            }}>
-                                {currentProverb ?? 'Selecting a proverb...'}
+                            {currentProverb ?? 'Selecting a proverb...'}
 
-                                <button
-                                    type="button"
-                                    onClick={() => void rerollProverb()}
-                                    disabled={proverbRerollsLeft <= 0}
-                                    aria-label="Pick a different proverb"
-                                    style={{
-                                        width: '36px',
-                                        height: '36px',
-                                        border: 'none',
-                                        backgroundColor: 'transparent',
-                                        backgroundImage: "url('/images/ui/mondat_kiikszelogomb.svg')",
-                                        backgroundRepeat: 'no-repeat',
-                                        backgroundPosition: 'center',
-                                        backgroundSize: '100% 100%',
-                                        cursor: proverbRerollsLeft > 0 ? 'pointer' : 'not-allowed',
-                                        opacity: proverbRerollsLeft > 0 ? 1 : 0.65,
-                                        position: 'absolute',
-                                        right: '100px',
-                                        top: '-4px',
-                                    }}
-                                />
-                            </div>
+                            <button
+                                type="button"
+                                onClick={() => void rerollProverb()}
+                                disabled={proverbRerollsLeft <= 0}
+                                aria-label="Pick a different proverb"
+                                style={{
+                                    width: '44px',
+                                    height: '44px',
+                                    border: 'none',
+                                    backgroundColor: 'transparent',
+                                    backgroundImage: "url('/images/ui/mondat_kiikszelogomb.svg')",
+                                    backgroundRepeat: 'no-repeat',
+                                    backgroundPosition: 'center',
+                                    backgroundSize: '100% 100%',
+                                    cursor: proverbRerollsLeft > 0 ? 'pointer' : 'not-allowed',
+                                    opacity: proverbRerollsLeft > 0 ? 1 : 0.65,
+                                    position: 'absolute',
+                                    right: '5%',
+                                    top: '10%',
+                                    transform: 'translateY(-50%)',
+                                }}
+                            />
                         </div>
                     </div>
                 )}
