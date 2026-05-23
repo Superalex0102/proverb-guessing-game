@@ -13,12 +13,15 @@ export default function Page() {
     const {
         sessionExists,
         objectCatalog,
+        objectCategories,
         eyeCatalog,
         mouthCatalog,
         sidebarRootEntries,
         activeSidebarEntry,
         activeSidebarMenu,
         setActiveSidebarMenu,
+        activeObjectCategoryId,
+        setActiveObjectCategoryId,
         selectedEyeId,
         setSelectedEyeId,
         selectedMouthId,
@@ -238,11 +241,14 @@ export default function Page() {
                                 activeSidebarEntry={activeSidebarEntry}
                                 sidebarRootEntries={sidebarRootEntries}
                                 objectCatalog={objectCatalog}
+                                objectCategories={objectCategories}
                                 eyeCatalog={eyeCatalog}
                                 mouthCatalog={mouthCatalog}
+                                activeObjectCategoryId={activeObjectCategoryId}
                                 selectedEyeId={selectedEyeId}
                                 selectedMouthId={selectedMouthId}
                                 setActiveSidebarMenu={setActiveSidebarMenu}
+                                setActiveObjectCategoryId={setActiveObjectCategoryId}
                                 setSelectedEyeId={setSelectedEyeId}
                                 setSelectedMouthId={setSelectedMouthId}
                                 startDraggingFromTray={startDraggingFromTray}

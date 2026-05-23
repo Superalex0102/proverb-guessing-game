@@ -14,6 +14,13 @@ export type ObjectCatalogItem = {
     previewSrc?: string;
 };
 
+export type ObjectCatalogCategory = {
+    id: string;
+    label: string;
+    iconSrc: string;
+    items: ObjectCatalogItem[];
+};
+
 export type SidebarScreenId = 'root' | 'eyes' | 'mouth' | 'props';
 
 export type SidebarRootEntry = {
@@ -57,12 +64,15 @@ export type UseGameSessionResult = {
     sessionId?: string;
     sessionExists: boolean | null;
     objectCatalog: ObjectCatalogItem[];
+    objectCategories: ObjectCatalogCategory[];
     eyeCatalog: ObjectCatalogItem[];
     mouthCatalog: ObjectCatalogItem[];
     sidebarRootEntries: SidebarRootEntry[];
     activeSidebarEntry: SidebarRootEntry | undefined;
     activeSidebarMenu: SidebarScreenId;
     setActiveSidebarMenu: React.Dispatch<React.SetStateAction<SidebarScreenId>>;
+    activeObjectCategoryId: string | null;
+    setActiveObjectCategoryId: React.Dispatch<React.SetStateAction<string | null>>;
     selectedEyeId: string | null;
     setSelectedEyeId: React.Dispatch<React.SetStateAction<string | null>>;
     selectedMouthId: string | null;
@@ -108,6 +118,17 @@ function isObjectCatalogItem(value: unknown): value is ObjectCatalogItem {
         && typeof item.src === 'string';
 }
 
+function isObjectCatalogCategory(value: unknown): value is ObjectCatalogCategory {
+    if (!value || typeof value !== 'object') return false;
+
+    const item = value as Record<string, unknown>;
+    return typeof item.id === 'string'
+        && typeof item.label === 'string'
+        && typeof item.iconSrc === 'string'
+        && Array.isArray(item.items)
+        && item.items.every(isObjectCatalogItem);
+}
+
 function isNullableString(value: unknown): value is string | null {
     return value === null || typeof value === 'string';
 }
@@ -118,9 +139,11 @@ function isNumber(value: unknown): value is number {
 
 export function useGameSession(sessionId?: string): UseGameSessionResult {
     const [objectCatalog, setObjectCatalog] = useState<ObjectCatalogItem[]>([]);
+    const [objectCategories, setObjectCategories] = useState<ObjectCatalogCategory[]>([]);
     const [eyeCatalog, setEyeCatalog] = useState<ObjectCatalogItem[]>([]);
     const [mouthCatalog, setMouthCatalog] = useState<ObjectCatalogItem[]>([]);
     const [activeSidebarMenu, setActiveSidebarMenu] = useState<SidebarScreenId>('root');
+    const [activeObjectCategoryId, setActiveObjectCategoryId] = useState<string | null>(null);
     const [selectedEyeId, setSelectedEyeId] = useState<string | null>(null);
     const [selectedMouthId, setSelectedMouthId] = useState<string | null>(null);
     const [sessionExists, setSessionExists] = useState<boolean | null>(null);
@@ -291,13 +314,29 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
             if (isCancelled) return;
 
             if (objectsResult.status === 'fulfilled' && objectsResult.value.ok) {
-                const objectsData: { objects?: unknown } = await objectsResult.value.json();
-                if (Array.isArray(objectsData.objects)) {
-                    setObjectCatalog(objectsData.objects.filter(isObjectCatalogItem));
+                const objectsData: { categories?: unknown; objects?: unknown } = await objectsResult.value.json();
+
+                if (Array.isArray(objectsData.categories)) {
+                    const categories = objectsData.categories.filter(isObjectCatalogCategory);
+                    setObjectCategories(categories);
+                    setObjectCatalog(categories.flatMap((category) => category.items));
+                } else if (Array.isArray(objectsData.objects)) {
+                    const objects = objectsData.objects.filter(isObjectCatalogItem);
+                    setObjectCategories([
+                        {
+                            id: 'misc',
+                            label: 'Vegyes',
+                            iconSrc: '/images/ui/panel_icons/object/misc.svg',
+                            items: objects,
+                        },
+                    ]);
+                    setObjectCatalog(objects);
                 } else {
+                    setObjectCategories([]);
                     setObjectCatalog([]);
                 }
             } else {
+                setObjectCategories([]);
                 setObjectCatalog([]);
             }
 
@@ -352,6 +391,12 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
             setSelectedMouthId(mouthCatalog[0].id);
         }
     }, [mouthCatalog, placedObjects, selectedMouthId]);
+
+    useEffect(() => {
+        if (activeSidebarMenu !== 'props') {
+            setActiveObjectCategoryId(null);
+        }
+    }, [activeSidebarMenu]);
 
     useEffect(() => {
         const allCatalogItems = [
@@ -849,6 +894,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         setSelectedEyeId(null);
         setSelectedMouthId(null);
         setActiveSidebarMenu('root');
+        setActiveObjectCategoryId(null);
         setLastSelectedObjectId(null);
         setDraggingObjectId(null);
         draggingObjectIdRef.current = null;
@@ -899,12 +945,15 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         sessionId,
         sessionExists,
         objectCatalog,
+        objectCategories,
         eyeCatalog,
         mouthCatalog,
         sidebarRootEntries,
         activeSidebarEntry,
         activeSidebarMenu,
         setActiveSidebarMenu,
+        activeObjectCategoryId,
+        setActiveObjectCategoryId,
         selectedEyeId,
         setSelectedEyeId,
         selectedMouthId,
