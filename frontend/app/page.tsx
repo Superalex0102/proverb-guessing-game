@@ -254,7 +254,7 @@ export default function Page() {
         <div style={headerWrapperStyle}>
           <h1 style={titleStyle}>Képmutató Társasjáték</h1>
           <div style={creditsStyle}>
-            <div style={creditsLabelStyle}>
+            {/* <div style={creditsLabelStyle}>
               <UsersRound size={16} strokeWidth={2.5} />
               A játék készítői
             </div>
@@ -283,7 +283,7 @@ export default function Page() {
                   <ExternalLink size={16} strokeWidth={2.4} />
                 </a>
               </li>
-            </ul>
+            </ul> */}
           </div>
           <p style={introStyle}>
             A játékot egy TV-n vagy más nagy kijelzős eszközön érdemes megnyitni. Innen indul a session,
