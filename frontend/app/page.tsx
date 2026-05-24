@@ -341,7 +341,7 @@ export default function Page() {
             {isCreating ? 'Session létrehozása...' : 'Session indítása'}
           </button>
           <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.95rem' }}>
-            A gombbal létrejön egy új játék, utána a TV-n megjelenő QR kódot lehet csatlakoztatni.
+            A gombbal létrejön egy új játék, utána a TV-n megjelenő QR kóddal lehet csatlakozni.
           </p>
           {error && <p style={{ margin: 0, color: '#fca5a5', fontSize: '0.95rem' }}>{error}</p>}
         </div>
