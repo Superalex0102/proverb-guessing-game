@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Bricolage_Grotesque } from 'next/font/google';
 
+import './globals.css';
+
 const bricolageGrotesque = Bricolage_Grotesque({
   subsets: ['latin'],
   variable: '--font-bricolage-grotesque',
@@ -18,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="hu">
       <body className={bricolageGrotesque.className}>{children}</body>
     </html>
   );
