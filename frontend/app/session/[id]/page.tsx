@@ -175,6 +175,19 @@ export default function Page() {
     return Number.isFinite(scale) && scale > 0 ? scale : 1;
   }, [currentBoardSize]);
 
+  const activeTvScale = useMemo(() => {
+    if (typeof window === 'undefined') return 1;
+
+    const containerW = window.innerWidth - 48;
+    const containerH = window.innerHeight - 48;
+
+    const scaleX = containerW / currentBoardSize.width;
+    const scaleY = containerH / currentBoardSize.height;
+    const scale = Math.min(scaleX, scaleY) * 0.92;
+
+    return Number.isFinite(scale) && scale > 0 ? scale : 1;
+  }, [currentBoardSize]);
+
   const isGameActive = phase !== 'lobby';
 
   const shellStyle = {
@@ -311,6 +324,23 @@ export default function Page() {
     boxShadow: 'inset 0 0 40px rgba(0,0,0,0.05)',
   } as const;
 
+  const activeBoardShellStyle = {
+    minHeight: '100vh',
+    display: 'grid',
+    placeItems: 'center',
+    background: '#e6fdff',
+    overflow: 'hidden',
+    position: 'relative',
+  } as const;
+
+  const activeBoardStageStyle = {
+    position: 'relative',
+    width: '100vw',
+    height: '100vh',
+    background: '#e6fdff',
+    overflow: 'hidden',
+  } as const;
+
   const sessionTagStyle = {
     position: 'absolute',
     left: '16px',
@@ -434,6 +464,95 @@ export default function Page() {
               <ArrowLeft size={18} />
               Vissza a főoldalra
             </NextLink>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isGameActive) {
+    return (
+      <div style={activeBoardShellStyle}>
+        <div ref={tvBoardContainerRef} style={activeBoardStageStyle}>
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: `${currentBoardSize.width}px`,
+              height: `${currentBoardSize.height}px`,
+              transform: `translate(-50%, -50%) scale(${activeTvScale})`,
+              transformOrigin: 'center center',
+            }}
+          >
+            {placedObjects.map((item) => {
+              const isEyes = item.objectId === 'character-eyes';
+              const isMouth = item.objectId === 'character-mouth';
+              const objectSize = item.objectId === CHARACTER_OBJECT_ID ? 320 : isEyes ? 160 : isMouth ? 180 : 240;
+
+              const renderX = isEyes ? item.x + 78 : isMouth ? item.x + 68 : item.x;
+              const renderY = isEyes ? item.y - 9 : isMouth ? item.y + 6 : item.y;
+
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    position: 'absolute',
+                    left: `${renderX}px`,
+                    top: `${renderY}px`,
+                    width: `${objectSize}px`,
+                    height: `${objectSize}px`,
+                  }}
+                >
+                  <img
+                    src={item.src}
+                    alt={item.name}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      pointerEvents: 'none',
+                    }}
+                    draggable={false}
+                  />
+
+                  {item.eyesSrc && (
+                    <img
+                      src={item.eyesSrc}
+                      alt="Szem"
+                      style={{
+                        position: 'absolute',
+                        width: '160px',
+                        height: '160px',
+                        left: '78px',
+                        top: '-9px',
+                        pointerEvents: 'none',
+                      }}
+                      draggable={false}
+                    />
+                  )}
+
+                  {item.mouthSrc && (
+                    <img
+                      src={item.mouthSrc}
+                      alt="Száj"
+                      style={{
+                        position: 'absolute',
+                        width: '180px',
+                        height: '180px',
+                        left: '68px',
+                        top: '6px',
+                        pointerEvents: 'none',
+                      }}
+                      draggable={false}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
