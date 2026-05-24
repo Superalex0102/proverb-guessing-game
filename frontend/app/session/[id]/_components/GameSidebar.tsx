@@ -357,8 +357,8 @@ export function GameSidebar({
                                         src={category.iconSrc}
                                         alt={category.label}
                                         style={{
-                                            width: '60px',
-                                            height: '60px',
+                                            width: '100px',
+                                            height: '100px',
                                             objectFit: 'contain',
                                             pointerEvents: 'none',
                                             userSelect: 'none',
@@ -366,15 +366,6 @@ export function GameSidebar({
                                         }}
                                         draggable={false}
                                     />
-                                    <span style={{
-                                        fontSize: '18px',
-                                        lineHeight: 1.05,
-                                        color: '#0f172a',
-                                        fontWeight: 700,
-                                        textAlign: 'center',
-                                    }}>
-                                        {category.label}
-                                    </span>
                                 </button>
                             ))}
 
