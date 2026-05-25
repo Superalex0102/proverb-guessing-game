@@ -105,9 +105,17 @@ export function getObjectSize(objectId: string, src?: string): number {
     if (objectId === CHARACTER_OBJECT_ID || src === CHARACTER_OBJECT_SRC) {
         return CHARACTER_OBJECT_SIZE;
     }
+    if (src) {
+        const natural = objectNaturalSizeMap[src];
+        if (natural) {
+            return Math.max(natural.w, natural.h);
+        }
+    }
 
     return PLACED_OBJECT_SIZE;
 }
+
+const objectNaturalSizeMap: Record<string, { w: number; h: number }> = {};
 
 function isObjectCatalogItem(value: unknown): value is ObjectCatalogItem {
     if (!value || typeof value !== 'object') return false;
@@ -162,6 +170,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
     const draggingOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const objectVisibleBoundsRef = useRef<Record<string, VisibleBounds>>({});
     const objectCanvasRef = useRef<Record<string, HTMLCanvasElement>>({});
+    const [, setVisibleBoundsVersion] = useState(0);
 
     const sidebarRootEntries: SidebarRootEntry[] = [
         {
@@ -202,6 +211,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
             const image = new Image();
 
             image.onload = () => {
+                objectNaturalSizeMap[src] = { w: image.naturalWidth, h: image.naturalHeight };
                 const canvas = document.createElement('canvas');
                 canvas.width = objectSize;
                 canvas.height = objectSize;
@@ -425,6 +435,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
             if (isCancelled) return;
 
             objectVisibleBoundsRef.current = Object.fromEntries(measured);
+            setVisibleBoundsVersion((v) => v + 1);
         };
 
         void loadVisibleBounds();
@@ -788,8 +799,11 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
 
         const boardRect = board.getBoundingClientRect();
 
-        const x = event.clientX - boardRect.left - PLACED_OBJECT_SIZE / 2;
-        const y = event.clientY - boardRect.top - PLACED_OBJECT_SIZE / 2;
+        const object = objectCatalog.find((item) => item.id === objectId);
+        const objectSize = getObjectSize(objectId, object?.src);
+
+        const x = event.clientX - boardRect.left - objectSize / 2;
+        const y = event.clientY - boardRect.top - objectSize / 2;
 
         const newPlacedId = addObjectToBoard(objectId, x, y);
         if (!newPlacedId) return;
@@ -799,8 +813,8 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         setDraggingObjectId(newPlacedId);
 
         draggingOffsetRef.current = {
-            x: PLACED_OBJECT_SIZE / 2,
-            y: PLACED_OBJECT_SIZE / 2,
+            x: objectSize / 2,
+            y: objectSize / 2,
         };
 
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -929,13 +943,15 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         const contentWidth = Math.max(1, visibleBounds.maxX - visibleBounds.minX + 1);
         const contentHeight = Math.max(1, visibleBounds.maxY - visibleBounds.minY + 1);
 
+        const objectSize = getObjectSize(item.id, item.src);
+
         return Math.max(
             1,
             Math.min(
                 SIDEBAR_PREVIEW_MAX_SCALE,
                 Math.min(
-                    (PLACED_OBJECT_SIZE * SIDEBAR_PREVIEW_CONTENT_SCALE) / contentWidth,
-                    (PLACED_OBJECT_SIZE * SIDEBAR_PREVIEW_CONTENT_SCALE) / contentHeight,
+                    (objectSize * SIDEBAR_PREVIEW_CONTENT_SCALE) / contentWidth,
+                    (objectSize * SIDEBAR_PREVIEW_CONTENT_SCALE) / contentHeight,
                 ),
             ),
         );
