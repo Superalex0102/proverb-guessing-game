@@ -17,6 +17,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { isPlacedObjectArray, PlacedObject } from '@/lib/placed-object';
 import { getSocket } from '@/lib/socket';
 import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
+import { getObjectSize } from './_hooks/useGameSession';
 
 export default function Page() {
   const CHARACTER_OBJECT_ID = 'karakter_siman.svg';
@@ -488,7 +489,7 @@ export default function Page() {
             {placedObjects.map((item) => {
               const isEyes = item.objectId === 'character-eyes';
               const isMouth = item.objectId === 'character-mouth';
-              const objectSize = item.objectId === CHARACTER_OBJECT_ID ? 320 : isEyes ? 160 : isMouth ? 180 : 240;
+              const objectSize = getObjectSize(item.objectId, item.src);
 
               const renderX = isEyes ? item.x + 78 : isMouth ? item.x + 68 : item.x;
               const renderY = isEyes ? item.y - 9 : isMouth ? item.y + 6 : item.y;
@@ -618,7 +619,7 @@ export default function Page() {
                   {placedObjects.map((item) => {
                     const isEyes = item.objectId === 'character-eyes';
                     const isMouth = item.objectId === 'character-mouth';
-                    const objectSize = item.objectId === CHARACTER_OBJECT_ID ? 320 : isEyes ? 160 : isMouth ? 180 : 240;
+                    const objectSize = getObjectSize(item.objectId, item.src);
 
                     const renderX = isEyes ? item.x + 78 : isMouth ? item.x + 68 : item.x;
                     const renderY = isEyes ? item.y - 9 : isMouth ? item.y + 6 : item.y;

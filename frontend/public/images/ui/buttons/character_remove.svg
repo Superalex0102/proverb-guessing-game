@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="beltér6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 137.788 147.9526">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #80cfcc;
+        stroke-width: 5.8563px;
+      }
+
+      .cls-1, .cls-2 {
+        stroke: #000;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2 {
+        fill: none;
+        stroke-width: 9px;
+      }
+    </style>
+  </defs>
+  <ellipse class="cls-1" cx="68.894" cy="73.9763" rx="59.6572" ry="59.5272"/>
+  <line class="cls-2" x1="46.2174" y1="103.0768" x2="90.0902" y2="49.9702"/>
+  <line class="cls-2" x1="90.353" y1="103.9276" x2="46.4802" y2="50.821"/>
+</svg>

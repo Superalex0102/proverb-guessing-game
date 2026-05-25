@@ -77,6 +77,7 @@ export type UseGameSessionResult = {
     setSelectedEyeId: React.Dispatch<React.SetStateAction<string | null>>;
     selectedMouthId: string | null;
     setSelectedMouthId: React.Dispatch<React.SetStateAction<string | null>>;
+    isCharacterVisible: boolean;
     progress: number;
     status: SessionPhase;
     phaseEndAt: string | null;
@@ -93,6 +94,8 @@ export type UseGameSessionResult = {
     startNextRound: () => void;
     startDraggingFromTray: (event: React.PointerEvent<HTMLButtonElement>, objectId: string) => void;
     startDraggingPlacedObject: (event: React.PointerEvent<HTMLDivElement>) => void;
+    removeCharacter: () => void;
+    showCharacter: () => void;
     removeSelectedObject: () => void;
     getSidebarPreviewScale: (item: ObjectCatalogItem) => number;
 };
@@ -154,6 +157,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
     const [activeObjectCategoryId, setActiveObjectCategoryId] = useState<string | null>(null);
     const [selectedEyeId, setSelectedEyeId] = useState<string | null>(null);
     const [selectedMouthId, setSelectedMouthId] = useState<string | null>(null);
+    const [isCharacterVisible, setIsCharacterVisible] = useState(true);
     const [sessionExists, setSessionExists] = useState<boolean | null>(null);
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState<SessionPhase>('lobby');
@@ -203,6 +207,29 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
             maxX: objectSize - 1,
             minY: 0,
             maxY: objectSize - 1,
+        };
+    }, []);
+
+    const getDefaultCharacterFaceSelection = useCallback(() => ({
+        eyeId: eyeCatalog[0]?.id ?? null,
+        mouthId: mouthCatalog[0]?.id ?? null,
+    }), [eyeCatalog, mouthCatalog]);
+
+    const createCharacterObject = useCallback((boardWidth: number, boardHeight: number, eyeSrc?: string | null, mouthSrc?: string | null): PlacedObject => {
+        const characterSize = getObjectSize(CHARACTER_OBJECT_ID, CHARACTER_OBJECT_SRC);
+        const centerX = (boardWidth - characterSize) / 2;
+        const centerY = (boardHeight - characterSize) / 2;
+
+        return {
+            id: `karakter_siman-${Date.now()}-fixed`,
+            objectId: CHARACTER_OBJECT_ID,
+            src: CHARACTER_OBJECT_SRC,
+            name: 'Siman Character',
+            x: centerX,
+            y: centerY + CENTER_CHARACTER_Y_OFFSET,
+            isMoveable: false,
+            ...(eyeSrc ? { eyesSrc: eyeSrc } : {}),
+            ...(mouthSrc ? { mouthSrc: mouthSrc } : {}),
         };
     }, []);
 
@@ -389,18 +416,18 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
     useEffect(() => {
         const characterExists = placedObjects.some((obj) => obj.objectId === CHARACTER_OBJECT_ID);
 
-        if (eyeCatalog.length > 0 && characterExists && !selectedEyeId) {
+        if (eyeCatalog.length > 0 && isCharacterVisible && characterExists && !selectedEyeId) {
             setSelectedEyeId(eyeCatalog[0].id);
         }
-    }, [eyeCatalog, placedObjects, selectedEyeId]);
+    }, [eyeCatalog, isCharacterVisible, placedObjects, selectedEyeId]);
 
     useEffect(() => {
         const characterExists = placedObjects.some((obj) => obj.objectId === CHARACTER_OBJECT_ID);
 
-        if (mouthCatalog.length > 0 && characterExists && !selectedMouthId) {
+        if (mouthCatalog.length > 0 && isCharacterVisible && characterExists && !selectedMouthId) {
             setSelectedMouthId(mouthCatalog[0].id);
         }
-    }, [mouthCatalog, placedObjects, selectedMouthId]);
+    }, [isCharacterVisible, mouthCatalog, placedObjects, selectedMouthId]);
 
     useEffect(() => {
         if (activeSidebarMenu !== 'props') {
@@ -580,7 +607,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
     }, [applySessionSnapshot, sessionExists, sessionId]);
 
     useEffect(() => {
-        if (status !== 'constructing') return;
+        if (status !== 'constructing' || !isCharacterVisible) return;
 
         const timeout = window.setTimeout(() => {
             const board = constructionBoardRef.current;
@@ -590,33 +617,28 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
             const boardH = board.offsetHeight;
             if (boardW <= 0 || boardH <= 0) return;
 
-            const characterSize = getObjectSize(CHARACTER_OBJECT_ID, CHARACTER_OBJECT_SRC);
-            const centerX = (boardW - characterSize) / 2;
-            const centerY = (boardH - characterSize) / 2;
-
             const characterExists = placedObjects.some((obj) => obj.objectId === CHARACTER_OBJECT_ID);
 
             if (!characterExists) {
+                const { eyeId, mouthId } = getDefaultCharacterFaceSelection();
+                const defaultEye = eyeId ? eyeCatalog.find((item) => item.id === eyeId) : undefined;
+                const defaultMouth = mouthId ? mouthCatalog.find((item) => item.id === mouthId) : undefined;
+
                 setPlacedObjects((prev) => [
                     ...prev,
-                    {
-                        id: `karakter_siman-${Date.now()}-fixed`,
-                        objectId: CHARACTER_OBJECT_ID,
-                        src: '/images/characters/karakter_siman.svg',
-                        name: 'Siman Character',
-                        x: centerX,
-                        y: centerY + CENTER_CHARACTER_Y_OFFSET,
-                        isMoveable: false,
-                    },
+                    createCharacterObject(boardW, boardH, defaultEye?.src, defaultMouth?.src),
                 ]);
+
+                setSelectedEyeId(eyeId);
+                setSelectedMouthId(mouthId);
             }
         }, 100);
 
         return () => window.clearTimeout(timeout);
-    }, [placedObjects, status]);
+    }, [createCharacterObject, eyeCatalog, getDefaultCharacterFaceSelection, isCharacterVisible, mouthCatalog, placedObjects, status]);
 
     useEffect(() => {
-        if (!selectedEyeId) return;
+        if (!selectedEyeId || !isCharacterVisible) return;
         setPlacedObjects((prev) => {
             const selectedEye = eyeCatalog.find((item) => item.id === selectedEyeId);
             if (!selectedEye) return prev;
@@ -627,10 +649,10 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
                     : obj,
             );
         });
-    }, [eyeCatalog, selectedEyeId]);
+    }, [eyeCatalog, isCharacterVisible, selectedEyeId]);
 
     useEffect(() => {
-        if (!selectedMouthId) return;
+        if (!selectedMouthId || !isCharacterVisible) return;
         setPlacedObjects((prev) => {
             const selectedMouth = mouthCatalog.find((item) => item.id === selectedMouthId);
             if (!selectedMouth) return prev;
@@ -641,7 +663,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
                     : obj,
             );
         });
-    }, [mouthCatalog, selectedMouthId]);
+    }, [isCharacterVisible, mouthCatalog, selectedMouthId]);
 
     useEffect(() => {
         if (!sessionId || sessionExists !== true || !socketRef.current) return;
@@ -905,6 +927,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         if (!sessionId) return;
 
         setPlacedObjects([]);
+        setIsCharacterVisible(true);
         setSelectedEyeId(null);
         setSelectedMouthId(null);
         setActiveSidebarMenu('root');
@@ -923,8 +946,54 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         void syncPhase('picking');
     }, [sessionId, syncPhase]);
 
+    const removeCharacter = useCallback(() => {
+        if (!isCharacterVisible) return;
+
+        setIsCharacterVisible(false);
+        setPlacedObjects((prev) => prev.filter((item) => item.objectId !== CHARACTER_OBJECT_ID));
+        setSelectedEyeId(null);
+        setSelectedMouthId(null);
+
+        if (draggingObjectIdRef.current) {
+            draggingObjectIdRef.current = null;
+            setDraggingObjectId(null);
+        }
+
+        setLastSelectedObjectId((prev) => {
+            const selectedObject = placedObjects.find((obj) => obj.id === prev);
+            return selectedObject?.objectId === CHARACTER_OBJECT_ID ? null : prev;
+        });
+    }, [isCharacterVisible, placedObjects]);
+
+    const showCharacter = useCallback(() => {
+        if (isCharacterVisible || status !== 'constructing') return;
+
+        const board = constructionBoardRef.current;
+        if (!board) return;
+
+        const boardWidth = board.offsetWidth;
+        const boardHeight = board.offsetHeight;
+        if (boardWidth <= 0 || boardHeight <= 0) return;
+
+        const { eyeId, mouthId } = getDefaultCharacterFaceSelection();
+        const eye = eyeId ? eyeCatalog.find((item) => item.id === eyeId) : undefined;
+        const mouth = mouthId ? mouthCatalog.find((item) => item.id === mouthId) : undefined;
+
+        setIsCharacterVisible(true);
+        setSelectedEyeId(eyeId);
+        setSelectedMouthId(mouthId);
+        setPlacedObjects((prev) => {
+            if (prev.some((item) => item.objectId === CHARACTER_OBJECT_ID)) return prev;
+            return [...prev, createCharacterObject(boardWidth, boardHeight, eye?.src, mouth?.src)];
+        });
+    }, [createCharacterObject, eyeCatalog, getDefaultCharacterFaceSelection, isCharacterVisible, mouthCatalog, status]);
+
     const removeSelectedObject = useCallback(() => {
         const selectedObject = placedObjects.find((obj) => obj.id === lastSelectedObjectId);
+        if (selectedObject?.objectId === CHARACTER_OBJECT_ID) {
+            removeCharacter();
+            return;
+        }
         if (selectedObject?.isMoveable === false) return;
         if (!lastSelectedObjectId) return;
 
@@ -936,7 +1005,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         }
 
         setLastSelectedObjectId(null);
-    }, [lastSelectedObjectId, placedObjects]);
+    }, [lastSelectedObjectId, placedObjects, removeCharacter]);
 
     const getSidebarPreviewScale = useCallback((item: ObjectCatalogItem) => {
         const visibleBounds = objectVisibleBoundsRef.current[item.id] ?? getDefaultVisibleBounds(item.id, item.src);
@@ -974,6 +1043,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         setSelectedEyeId,
         selectedMouthId,
         setSelectedMouthId,
+        isCharacterVisible,
         progress,
         status,
         phaseEndAt,
@@ -990,6 +1060,8 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         startNextRound,
         startDraggingFromTray,
         startDraggingPlacedObject,
+        removeCharacter,
+        showCharacter,
         removeSelectedObject,
         getSidebarPreviewScale,
     };

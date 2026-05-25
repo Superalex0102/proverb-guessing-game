@@ -54,6 +54,7 @@ export default function Page() {
         setSelectedEyeId,
         selectedMouthId,
         setSelectedMouthId,
+        isCharacterVisible,
         progress,
         status,
         currentProverb,
@@ -69,6 +70,8 @@ export default function Page() {
         startNextRound,
         startDraggingFromTray,
         startDraggingPlacedObject,
+        removeCharacter,
+        showCharacter,
         removeSelectedObject,
         getSidebarPreviewScale,
     } = useGameSession(sessionId);
@@ -351,8 +354,11 @@ export default function Page() {
                             placedObjects={placedObjects}
                             draggingObjectId={draggingObjectId}
                             lastSelectedObjectId={lastSelectedObjectId}
+                            isCharacterVisible={isCharacterVisible}
                             onStartDraggingPlacedObject={startDraggingPlacedObject}
                             onRemoveSelectedObject={removeSelectedObject}
+                            onRemoveCharacter={removeCharacter}
+                            onShowCharacter={showCharacter}
                             onSendButtonClick={handleSendButtonClick}
                         />
 
@@ -384,13 +390,13 @@ export default function Page() {
                         flex: 1,
                         display: 'flex',
                         flexDirection: 'column',
-                        alignItems: 'center',
+                        alignItems: 'flex-end',
                         justifyContent: 'center',
-                        gap: '12px',
-                        padding: '16px',
+                        position: 'relative',
+                        paddingRight: '20px',
                     }}>
                         <h1 style={{
-                            fontSize: '28px',
+                            fontSize: '32px',
                             fontWeight: 700,
                             color: '#0d9488',
                             margin: 0,
@@ -401,16 +407,43 @@ export default function Page() {
                             type="button"
                             onClick={startNextRound}
                             style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                                 backgroundColor: 'transparent',
-                                backgroundImage: "url('/images/ui/kuldes_gomb.svg')",
+                                backgroundImage: "url('/images/ui/new_game_button.svg')",
                                 backgroundRepeat: 'no-repeat',
                                 backgroundPosition: 'center',
                                 backgroundSize: '100% 100%',
+                                color: '#0f172a',
                                 border: 'none',
-                                padding: '12px 28px',
+                                padding: 0,
+                                fontSize: '28pt',
+                                fontWeight: 800,
+                                lineHeight: 1,
+                                textAlign: 'center',
                                 cursor: 'pointer',
-                                minHeight: '72px',
-                                minWidth: '320px',
+                                letterSpacing: '0.05em',
+                                width: '320px',
+                                height: '98px',
+                                marginTop: '15px',
+                            }}
+                        >
+                            <span style={{ transform: 'translateY(-4px)' }}>Új Játék</span>
+                        </button>
+
+                        <img
+                            src="/images/ui/foot_illustration.svg"
+                            alt="Foot illustration"
+                            style={{
+                                position: 'absolute',
+                                left: '0',
+                                top: '0',
+                                width: '100%',
+                                height: 'auto',
+                                pointerEvents: 'none',
+                                zIndex: 20,
+                                opacity: 0.95,
                             }}
                         />
                     </div>

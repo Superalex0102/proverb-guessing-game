@@ -20,8 +20,11 @@ type ConstructionBoardProps = {
     placedObjects: PlacedObject[];
     draggingObjectId: string | null;
     lastSelectedObjectId: string | null;
+    isCharacterVisible: boolean;
     onStartDraggingPlacedObject: (event: PointerEvent<HTMLDivElement>) => void;
     onRemoveSelectedObject: () => void;
+    onRemoveCharacter: () => void;
+    onShowCharacter: () => void;
     onSendButtonClick: () => void;
 };
 
@@ -45,10 +48,17 @@ export function ConstructionBoard({
     placedObjects,
     draggingObjectId,
     lastSelectedObjectId,
+    isCharacterVisible,
     onStartDraggingPlacedObject,
     onRemoveSelectedObject,
+    onRemoveCharacter,
+    onShowCharacter,
     onSendButtonClick,
 }: ConstructionBoardProps) {
+    const characterObject = placedObjects.find((item) => item.objectId === CHARACTER_OBJECT_ID);
+    const selectedObject = placedObjects.find((item) => item.id === lastSelectedObjectId);
+    const selectedObjectIsCharacter = selectedObject?.objectId === CHARACTER_OBJECT_ID;
+
     return (
         <div
             ref={constructionBoardRef}
@@ -61,7 +71,54 @@ export function ConstructionBoard({
                 overflow: 'hidden',
             }}
         >
-            {status !== 'guessing' && (
+            {status !== 'guessing' && !isCharacterVisible && (
+                <button
+                    type="button"
+                    onClick={onShowCharacter}
+                    aria-label="Show character"
+                    style={{
+                        position: 'absolute',
+                        left: '55%',
+                        bottom: '3%',
+                        transform: 'translateX(-50%)',
+                        width: '64px',
+                        height: '64px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        backgroundImage: "url('/images/ui/buttons/character_show.svg')",
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'center',
+                        backgroundSize: '100% 100%',
+                        cursor: 'pointer',
+                        zIndex: 12,
+                    }}
+                />
+            )}
+
+            {status !== 'guessing' && isCharacterVisible && characterObject && (
+                <button
+                    type="button"
+                    onClick={onRemoveCharacter}
+                    aria-label="Remove character"
+                    style={{
+                        position: 'absolute',
+                        left: `${characterObject.x + getObjectSize(characterObject.objectId, characterObject.src) / 2 + 30}px`,
+                        top: `${Math.max(0, characterObject.y + 10)}px`,
+                        width: '50px',
+                        height: '50px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        backgroundImage: "url('/images/ui/buttons/character_remove.svg')",
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'center',
+                        backgroundSize: '100% 100%',
+                        cursor: 'pointer',
+                        zIndex: 60,
+                    }}
+                />
+            )}
+
+            {status !== 'guessing' && !selectedObjectIsCharacter && (
                 <button
                     type="button"
                     onClick={onRemoveSelectedObject}
@@ -93,7 +150,7 @@ export function ConstructionBoard({
                     ...sendButtonStyle,
                     position: 'absolute',
                     left: '30px',
-                    bottom: '15px',
+                    bottom: '16px',
                     zIndex: 9,
                 }}
                 aria-label={status === 'guessing' ? 'Finish game' : 'Start guessing phase'}
