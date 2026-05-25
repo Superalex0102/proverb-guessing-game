@@ -169,6 +169,7 @@ export function GameSidebar({
                             style={{
                                 width: '100%',
                                 height: '100%',
+                                marginLeft: '6px',
                                 pointerEvents: 'none',
                             }}
                         />
