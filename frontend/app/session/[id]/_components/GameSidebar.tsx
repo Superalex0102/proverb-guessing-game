@@ -125,18 +125,18 @@ export function GameSidebar({
                                     userSelect: 'none',
                                     pointerEvents: 'none',
                                     flexShrink: 0,
-                                    marginTop: '-6px',
+                                    marginTop: '-16px',
                                 }}
                                 draggable={false}
                             />
                         )}
                         <span style={{
-                            fontSize: '24px',
+                            fontSize: '20px',
                             lineHeight: 1,
                             color: '#0f172a',
                             fontWeight: 700,
                             flexShrink: 0,
-                            marginTop: '-6px',
+                            marginTop: '-16px',
                         }}>
                             {activeSidebarMenu === 'props' && activeObjectCategory ? activeObjectCategory.label : activeSidebarEntry.label}
                         </span>

@@ -22,10 +22,10 @@ type ObjectCatalogCategory = {
 
 const CATEGORY_METADATA: Record<string, { label: string; iconSrc: string }> = {
   animals: { label: 'Állatok', iconSrc: '/images/ui/panel_icons/object/animals.svg' },
-  clothes: { label: 'Ruhák', iconSrc: '/images/ui/panel_icons/object/clothes.svg' },
-  inside_objects: { label: 'Benti tárgyak', iconSrc: '/images/ui/panel_icons/object/inside.svg' },
-  outside_objects: { label: 'Kinti tárgyak', iconSrc: '/images/ui/panel_icons/object/outside.svg' },
-  misc: { label: 'Vegyes', iconSrc: '/images/ui/panel_icons/object/misc.svg' },
+  clothes: { label: 'Ruházat', iconSrc: '/images/ui/panel_icons/object/clothes.svg' },
+  inside_objects: { label: 'Benti kellékek', iconSrc: '/images/ui/panel_icons/object/inside.svg' },
+  outside_objects: { label: 'Kinti kellékek', iconSrc: '/images/ui/panel_icons/object/outside.svg' },
+  misc: { label: 'Egyéb', iconSrc: '/images/ui/panel_icons/object/misc.svg' },
 };
 
 function toPublicObjectSrc(relativePath: string): string {
