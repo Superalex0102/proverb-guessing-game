@@ -85,15 +85,14 @@ export function ConstructionBoard({
                 <div style={{
                     position: 'absolute',
                     left: '-10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
+                    top: '100px',
+                    bottom: '80px',
                     zIndex: 40,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    height: '65%',
-                    maxHeight: '220px',
-                    minHeight: '120px',
+                    justifyContent: 'center',
+                    pointerEvents: 'none',
                 }}>
                     <div
                         onPointerDown={(e) => {
@@ -133,11 +132,14 @@ export function ConstructionBoard({
                         style={{
                             position: 'relative',
                             height: '100%',
+                            maxHeight: '220px',
+                            minHeight: '120px',
                             width: '56px',
                             cursor: 'pointer',
                             touchAction: 'none',
                             display: 'flex',
                             justifyContent: 'center',
+                            pointerEvents: 'auto',
                         }}
                     >
                         <div style={{
