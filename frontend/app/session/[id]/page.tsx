@@ -17,7 +17,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { isPlacedObjectArray, PlacedObject } from '@/lib/placed-object';
 import { getSocket } from '@/lib/socket';
 import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
-import { getObjectSize, CHARACTER_EYES_STYLE, CHARACTER_MOUTH_STYLE } from './_hooks/useGameSession';
+import { getObjectSize, CHARACTER_EYES_STYLE, CHARACTER_MOUTH_STYLE, CHARACTER_OBJECT_ID } from './_hooks/useGameSession';
 
 export default function Page() {
   const params = useParams<{ id: string }>();
@@ -495,6 +495,8 @@ export default function Page() {
               const isMouth = item.objectId === 'character-mouth';
               const objectSize = getObjectSize(item.objectId, item.src);
 
+              const baseZIndex = item.objectId === CHARACTER_OBJECT_ID ? 10 : 30;
+
               const renderX = isEyes ? item.x + 78 : isMouth ? item.x + 68 : item.x;
               const renderY = isEyes ? item.y - 9 : isMouth ? item.y + 6 : item.y;
 
@@ -507,6 +509,7 @@ export default function Page() {
                     top: `${renderY}px`,
                     width: `${objectSize}px`,
                     height: `${objectSize}px`,
+                    zIndex: baseZIndex,
                   }}
                 >
                   <img
@@ -611,6 +614,8 @@ export default function Page() {
                     const isMouth = item.objectId === 'character-mouth';
                     const objectSize = getObjectSize(item.objectId, item.src);
 
+                    const baseZIndex = item.objectId === CHARACTER_OBJECT_ID ? 10 : 30;
+
                     const renderX = isEyes ? item.x + 78 : isMouth ? item.x + 68 : item.x;
                     const renderY = isEyes ? item.y - 9 : isMouth ? item.y + 6 : item.y;
 
@@ -623,6 +628,7 @@ export default function Page() {
                           top: `${renderY}px`,
                           width: `${objectSize}px`,
                           height: `${objectSize}px`,
+                          zIndex: baseZIndex,
                         }}
                       >
                         <img
