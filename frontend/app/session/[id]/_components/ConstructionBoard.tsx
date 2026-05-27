@@ -91,24 +91,27 @@ export function ConstructionBoard({
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
+                    height: '65%',
+                    maxHeight: '220px',
+                    minHeight: '120px',
                 }}>
-                    <div 
+                    <div
                         onPointerDown={(e) => {
                             const track = e.currentTarget;
                             const rect = track.getBoundingClientRect();
-                            const thumbSize = 22;
-                            const trackPadding = 20; // Padding at top and bottom to avoid covering +/- signs
-                            
+
                             const updateZoom = (clientY: number) => {
                                 const y = clientY - rect.top;
-                                const rangeMin = trackPadding + thumbSize / 2;
-                                const rangeMax = rect.height - trackPadding - thumbSize / 2;
+                                const pad = rect.height * 0.10;
+                                const rangeMin = pad;
+                                const rangeMax = rect.height - pad;
+
                                 const clampedY = Math.max(rangeMin, Math.min(rangeMax, y));
                                 const percent = 1 - ((clampedY - rangeMin) / (rangeMax - rangeMin));
                                 const newZoom = ZOOM_MIN + percent * (ZOOM_MAX - ZOOM_MIN);
                                 setZoomLevel(Math.round(newZoom * 100) / 100);
                             };
-                            
+
                             updateZoom(e.clientY);
                             track.setPointerCapture(e.pointerId);
 
@@ -129,7 +132,7 @@ export function ConstructionBoard({
                         }}
                         style={{
                             position: 'relative',
-                            height: '220px',
+                            height: '100%',
                             width: '56px',
                             cursor: 'pointer',
                             touchAction: 'none',
@@ -146,8 +149,8 @@ export function ConstructionBoard({
                             backgroundRepeat: 'no-repeat',
                             pointerEvents: 'none',
                         }} />
-                        <img 
-                            src="/images/ui/scroll/scroll_button.svg" 
+                        <img
+                            src="/images/ui/scroll/scroll_button.svg"
                             alt=""
                             draggable={false}
                             style={{
@@ -155,11 +158,11 @@ export function ConstructionBoard({
                                 width: '15px',
                                 height: '15px',
                                 left: '50%',
-                                transform: 'translateX(-50%)',
+                                transform: 'translate(-50%, -50%)',
                                 pointerEvents: 'none',
                                 userSelect: 'none',
-                                top: `${20 + (1 - Math.max(0, Math.min(1, (zoomLevel - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN)))) * (230 - 20 * 2 - 22)}px`,
-                            }} 
+                                top: `${10 + (1 - Math.max(0, Math.min(1, (zoomLevel - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN)))) * 80}%`,
+                            }}
                         />
                     </div>
                 </div>
