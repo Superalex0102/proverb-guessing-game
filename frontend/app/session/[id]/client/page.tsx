@@ -440,7 +440,7 @@ export default function Page() {
                                 position: 'absolute',
                                 left: '0',
                                 top: '0',
-                                width: '100%',
+                                width: '90%',
                                 height: 'auto',
                                 pointerEvents: 'none',
                                 zIndex: 20,
