@@ -285,10 +285,10 @@ export function ConstructionBoard({
                                 alt="Száj"
                                 style={{
                                     position: 'absolute',
-                                    width: '180px',
-                                    height: '180px',
-                                    left: '68px',
-                                    top: '6px',
+                                    width: '160px',
+                                    height: '160px',
+                                    left: '79px',
+                                    top: '22px',
                                     pointerEvents: 'none',
                                     userSelect: 'none',
                                 }}
