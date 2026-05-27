@@ -33,47 +33,10 @@ function useIsLandscape() {
     return isLandscape;
 }
 
-function useHideUrlBarOnLandscape(isLandscape: boolean) {
-    useEffect(() => {
-        if (!isLandscape) {
-            document.documentElement.style.removeProperty('height');
-            document.body.style.removeProperty('height');
-            return;
-        }
-
-        const root = document.documentElement;
-        const body = document.body;
-
-        const previousRootHeight = root.style.height;
-        const previousBodyHeight = body.style.height;
-
-        const nudgeBrowserChrome = () => {
-            root.style.height = 'calc(100% + 1px)';
-            body.style.height = 'calc(100dvh + 1px)';
-            window.scrollTo(0, 1);
-
-            window.setTimeout(() => {
-                window.scrollTo(0, 0);
-            }, 100);
-        };
-
-        const rafId = window.requestAnimationFrame(() => {
-            window.requestAnimationFrame(nudgeBrowserChrome);
-        });
-
-        return () => {
-            window.cancelAnimationFrame(rafId);
-            root.style.height = previousRootHeight;
-            body.style.height = previousBodyHeight;
-        };
-    }, [isLandscape]);
-}
-
 export default function Page() {
     const params = useParams<{ id: string }>();
     const sessionId = Array.isArray(params?.id) ? params.id[0] : params?.id;
     const isLandscape = useIsLandscape();
-    useHideUrlBarOnLandscape(isLandscape);
 
     const {
         sessionExists,
