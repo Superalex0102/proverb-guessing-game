@@ -499,7 +499,6 @@ export function GameSidebar({
                                         borderRadius: '12px',
                                         height: `${SIDEBAR_PROPS_ITEM_MIN_HEIGHT}px`,
                                         pointerEvents: 'none',
-                                        opacity: 0.45,
                                     }}
                                 />
                             )}
