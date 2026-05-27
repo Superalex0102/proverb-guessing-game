@@ -793,16 +793,28 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         const prevBodyOverflow = body.style.overflow;
         const prevBodyOverscroll = body.style.overscrollBehavior;
 
+        const prevUserSelect = body.style.userSelect;
+        const prevWebkitUserSelect = body.style.webkitUserSelect;
+        const prevWebkitTouchCallout = body.style.getPropertyValue('-webkit-touch-callout');
+
         html.style.overflow = 'hidden';
         html.style.overscrollBehavior = 'none';
         body.style.overflow = 'hidden';
         body.style.overscrollBehavior = 'none';
+
+        body.style.userSelect = 'none';
+        body.style.webkitUserSelect = 'none';
+        body.style.setProperty('-webkit-touch-callout', 'none');
 
         return () => {
             html.style.overflow = prevHtmlOverflow;
             html.style.overscrollBehavior = prevHtmlOverscroll;
             body.style.overflow = prevBodyOverflow;
             body.style.overscrollBehavior = prevBodyOverscroll;
+
+            body.style.userSelect = prevUserSelect;
+            body.style.webkitUserSelect = prevWebkitUserSelect;
+            body.style.setProperty('-webkit-touch-callout', prevWebkitTouchCallout);
         };
     }, []);
 
