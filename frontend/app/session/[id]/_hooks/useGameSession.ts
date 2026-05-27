@@ -943,11 +943,21 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         const pointerX = boardCenterX + (rawPointerX - boardCenterX) / z;
         const pointerY = boardCenterY + (rawPointerY - boardCenterY) / z;
 
-        const hit = [...placedObjects].reverse().find((item) => {
-            const localX = pointerX - item.x;
-            const localY = pointerY - item.y;
-            return isOpaquePixel(item.src, localX, localY);
-        });
+        const hit = [...placedObjects]
+            .map((item, originalIndex) => ({ item, originalIndex }))
+            .sort((a, b) => {
+                const zA = a.item.objectId === CHARACTER_OBJECT_ID ? 10 : 30;
+                const zB = b.item.objectId === CHARACTER_OBJECT_ID ? 10 : 30;
+
+                if (zA !== zB) return zB - zA;
+                return b.originalIndex - a.originalIndex;
+            })
+            .map((obj) => obj.item)
+            .find((item) => {
+                const localX = pointerX - item.x;
+                const localY = pointerY - item.y;
+                return isOpaquePixel(item.src, localX, localY);
+            });
 
         if (!hit) return;
         if (hit.isMoveable === false) return;
