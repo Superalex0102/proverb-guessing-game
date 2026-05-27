@@ -262,16 +262,17 @@ export function ConstructionBoard({
                             draggable={false}
                         />
 
+                        {/* Eyes and mouth layers for character objects */}
                         {item.eyesSrc && (
                             <img
                                 src={item.eyesSrc}
                                 alt="Szem"
                                 style={{
                                     position: 'absolute',
-                                    width: '160px',
-                                    height: '160px',
-                                    left: '78px',
-                                    top: '-9px',
+                                    width: '140px',
+                                    height: '140px',
+                                    left: '68px',
+                                    top: '-8px',
                                     pointerEvents: 'none',
                                     userSelect: 'none',
                                 }}
@@ -285,10 +286,10 @@ export function ConstructionBoard({
                                 alt="Száj"
                                 style={{
                                     position: 'absolute',
-                                    width: '160px',
-                                    height: '160px',
-                                    left: '79px',
-                                    top: '22px',
+                                    width: '140px',
+                                    height: '140px',
+                                    left: '69px',
+                                    top: '19px',
                                     pointerEvents: 'none',
                                     userSelect: 'none',
                                 }}

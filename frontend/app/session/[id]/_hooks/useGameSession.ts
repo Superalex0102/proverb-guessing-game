@@ -37,8 +37,8 @@ export type VisibleBounds = {
     maxY: number;
 };
 
-export const PLACED_OBJECT_SIZE = 240;
-export const CHARACTER_OBJECT_SIZE = 320;
+export const PLACED_OBJECT_SIZE = 210;
+export const CHARACTER_OBJECT_SIZE = 280;
 export const CHARACTER_OBJECT_ID = 'karakter_siman.svg';
 export const CHARACTER_OBJECT_SRC = '/images/characters/karakter_siman.svg';
 
@@ -214,13 +214,16 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         const centerX = (boardWidth - characterSize) / 2;
         const centerY = (boardHeight - characterSize) / 2;
 
+        const calculatedY = centerY + CENTER_CHARACTER_Y_OFFSET;
+        const safeY = Math.max(55, calculatedY);
+
         return {
             id: `karakter_siman-${Date.now()}-fixed`,
             objectId: CHARACTER_OBJECT_ID,
             src: CHARACTER_OBJECT_SRC,
             name: 'Siman Character',
             x: centerX,
-            y: centerY + CENTER_CHARACTER_Y_OFFSET,
+            y: safeY,
             isMoveable: false,
             ...(eyeSrc ? { eyesSrc: eyeSrc } : {}),
             ...(mouthSrc ? { mouthSrc: mouthSrc } : {}),
