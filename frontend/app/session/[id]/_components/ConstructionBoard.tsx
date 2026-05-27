@@ -320,7 +320,7 @@ export function ConstructionBoard({
                             backgroundPosition: 'center',
                             backgroundSize: '100% 100%',
                             cursor: 'pointer',
-                            zIndex: 100,
+                            zIndex: 20,
                             pointerEvents: 'auto',
                         }}
                     />
