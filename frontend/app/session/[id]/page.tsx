@@ -27,6 +27,7 @@ export default function Page() {
   const [placedObjects, setPlacedObjects] = useState<PlacedObject[]>([]);
   const [sourceBoardSize, setSourceBoardSize] = useState<{ width: number; height: number } | null>(null);
   const [showLink, setShowLink] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1.0);
 
   const tvBoardContainerRef = useRef<HTMLDivElement>(null);
 
@@ -85,24 +86,28 @@ export default function Page() {
       if (isSessionPhase(payload?.phase)) setPhase(payload.phase);
     };
 
-    const updateBoardSizeIfPresent = (payload: any) => {
+    const updateExtraState = (payload: any) => {
       if (
         typeof payload?.boardWidth === 'number' && Number.isFinite(payload.boardWidth) && payload.boardWidth > 0 &&
         typeof payload?.boardHeight === 'number' && Number.isFinite(payload.boardHeight) && payload.boardHeight > 0
       ) {
         setSourceBoardSize({ width: payload.boardWidth, height: payload.boardHeight });
       }
+      
+      if (typeof payload?.zoomLevel === 'number' && Number.isFinite(payload.zoomLevel)) {
+        setZoomLevel(payload.zoomLevel);
+      }
     };
 
-    const handleObjectsUpdate = (payload: { objects?: unknown; boardWidth?: unknown; boardHeight?: unknown }) => {
+    const handleObjectsUpdate = (payload: { objects?: unknown; boardWidth?: unknown; boardHeight?: unknown; zoomLevel?: unknown }) => {
       if (isPlacedObjectArray(payload?.objects)) setPlacedObjects(payload.objects);
-      updateBoardSizeIfPresent(payload);
+      updateExtraState(payload);
     };
 
-    const handleSessionState = (payload: { phase?: unknown; objects?: unknown; boardWidth?: unknown; boardHeight?: unknown }) => {
+    const handleSessionState = (payload: { phase?: unknown; objects?: unknown; boardWidth?: unknown; boardHeight?: unknown; zoomLevel?: unknown }) => {
       if (isSessionPhase(payload?.phase)) setPhase(payload.phase);
       if (isPlacedObjectArray(payload?.objects)) setPlacedObjects(payload.objects);
-      updateBoardSizeIfPresent(payload);
+      updateExtraState(payload);
     };
 
     joinRoom();
@@ -481,7 +486,7 @@ export default function Page() {
               top: '50%',
               width: `${currentBoardSize.width}px`,
               height: `${currentBoardSize.height}px`,
-              transform: `translate(-50%, -50%) scale(${activeTvScale})`,
+              transform: `translate(-50%, -50%) scale(${activeTvScale * zoomLevel})`,
               transformOrigin: 'center center',
             }}
           >
@@ -597,7 +602,7 @@ export default function Page() {
                     top: '50%',
                     width: `${currentBoardSize.width}px`,
                     height: `${currentBoardSize.height}px`,
-                    transform: `translate(-50%, -50%) scale(${tvScale})`,
+                    transform: `translate(-50%, -50%) scale(${tvScale * zoomLevel})`,
                     transformOrigin: 'center center',
                   }}
                 >

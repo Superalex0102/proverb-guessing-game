@@ -80,6 +80,10 @@ export const TIMELINE_FILL_INSET = {
     bottom: '17.2%',
 } as const;
 
+export const ZOOM_MIN = 0.8;
+export const ZOOM_MAX = 1.2;
+export const ZOOM_DEFAULT = 1.0;
+
 export type UseGameSessionResult = {
     sessionId?: string;
     sessionExists: boolean | null;
@@ -118,6 +122,8 @@ export type UseGameSessionResult = {
     showCharacter: () => void;
     removeSelectedObject: () => void;
     getSidebarPreviewScale: (item: ObjectCatalogItem) => number;
+    zoomLevel: number;
+    setZoomLevel: React.Dispatch<React.SetStateAction<number>>;
 };
 
 function createPlacedObjectId(objectId: string): string {
@@ -188,6 +194,8 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
     const draggingOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const objectVisibleBoundsRef = useRef<Record<string, VisibleBounds>>({});
     const objectCanvasRef = useRef<Record<string, HTMLCanvasElement>>({});
+    const [zoomLevel, setZoomLevel] = useState(ZOOM_DEFAULT);
+    const zoomLevelRef = useRef(zoomLevel);
     const [, setVisibleBoundsVersion] = useState(0);
 
     const sidebarRootEntries: SidebarRootEntry[] = [
@@ -595,17 +603,23 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
             applySessionSnapshot(payload);
         };
 
-        const handleObjectsUpdate = (payload: { objects?: unknown }) => {
+        const handleObjectsUpdate = (payload: { objects?: unknown; zoomLevel?: unknown }) => {
             if (isPlacedObjectArray(payload?.objects)) {
                 setPlacedObjects(payload.objects);
             }
+            if (isNumber(payload?.zoomLevel)) {
+                setZoomLevel(payload.zoomLevel);
+            }
         };
 
-        const handleSessionState = (payload: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown; guessingResult?: unknown; objects?: unknown }) => {
+        const handleSessionState = (payload: { phase?: unknown; phaseEndAt?: unknown; currentProverb?: unknown; proverbRerollsLeft?: unknown; guessingResult?: unknown; objects?: unknown; zoomLevel?: unknown }) => {
             applySessionSnapshot(payload);
 
             if (isPlacedObjectArray(payload?.objects)) {
                 setPlacedObjects(payload.objects);
+            }
+            if (isNumber(payload?.zoomLevel)) {
+                setZoomLevel(payload.zoomLevel);
             }
         };
 
@@ -707,13 +721,14 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
                 objects: objectsWithPct,
                 boardWidth: boardW,
                 boardHeight: boardH,
+                zoomLevel,
             });
         }, 60);
 
         return () => {
             window.clearTimeout(timeout);
         };
-    }, [placedObjects, sessionExists, sessionId, status]);
+    }, [placedObjects, sessionExists, sessionId, status, zoomLevel]);
 
     useEffect(() => {
         if (sessionExists !== true) return;
@@ -799,11 +814,14 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         const boardHeight = board.offsetHeight;
 
         const visibleBounds = objectVisibleBoundsRef.current[objectId] ?? getDefaultVisibleBounds(objectId, src);
+        const z = zoomLevelRef.current;
+        const boardCenterX = boardWidth / 2;
+        const boardCenterY = boardHeight / 2;
 
-        const minX = -visibleBounds.minX;
-        const minY = -visibleBounds.minY;
-        const maxX = boardWidth - visibleBounds.maxX - 1;
-        const maxY = boardHeight - visibleBounds.maxY - 1;
+        const minX = boardCenterX - (boardWidth / (2 * z)) - visibleBounds.minX;
+        const minY = boardCenterY - (boardHeight / (2 * z)) - visibleBounds.minY;
+        const maxX = boardCenterX + (boardWidth / (2 * z)) - visibleBounds.maxX - 1;
+        const maxY = boardCenterY + (boardHeight / (2 * z)) - visibleBounds.maxY - 1;
 
         return {
             x: Math.max(minX, Math.min(x, maxX)),
@@ -838,13 +856,13 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
 
         const object = objectCatalog.find((item) => item.id === objectId);
         const visibleBounds = objectVisibleBoundsRef.current[objectId] ?? getDefaultVisibleBounds(objectId, object?.src);
-        
+
         const visibleWidth = visibleBounds.maxX - visibleBounds.minX;
         const visibleHeight = visibleBounds.maxY - visibleBounds.minY;
-        
+
         const objectSize = getObjectSize(objectId, object?.src);
         const stagger = Math.min(4, placedObjects.length % 5) * 24;
-        
+
         const x = (board.offsetWidth / 2) - visibleBounds.minX - (visibleWidth / 2) + stagger;
         const y = (board.offsetHeight / 2) - visibleBounds.minY - (visibleHeight / 2) + stagger;
 
@@ -862,11 +880,17 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
 
             const boardRect = constructionBoardRef.current.getBoundingClientRect();
 
-            const mouseX = event.clientX - boardRect.left;
-            const mouseY = event.clientY - boardRect.top;
+            const z = zoomLevelRef.current;
+            const boardCenterX = boardRect.width / 2;
+            const boardCenterY = boardRect.height / 2;
 
-            const nextX = mouseX - draggingOffsetRef.current.x;
-            const nextY = mouseY - draggingOffsetRef.current.y;
+            const rawMouseX = event.clientX - boardRect.left;
+            const rawMouseY = event.clientY - boardRect.top;
+            const logicalMouseX = boardCenterX + (rawMouseX - boardCenterX) / z;
+            const logicalMouseY = boardCenterY + (rawMouseY - boardCenterY) / z;
+
+            const nextX = logicalMouseX - draggingOffsetRef.current.x;
+            const nextY = logicalMouseY - draggingOffsetRef.current.y;
 
             setPlacedObjects((prev) => {
                 const activeObject = prev.find((item) => item.id === activeId);
@@ -898,6 +922,10 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         };
     }, [clampToBoard]);
 
+    useEffect(() => {
+        zoomLevelRef.current = zoomLevel;
+    }, [zoomLevel]);
+
     const startDraggingPlacedObject = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
         event.preventDefault();
 
@@ -905,8 +933,15 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         if (!board) return;
 
         const boardRect = board.getBoundingClientRect();
-        const pointerX = event.clientX - boardRect.left;
-        const pointerY = event.clientY - boardRect.top;
+        const z = zoomLevelRef.current;
+        const boardCenterX = boardRect.width / 2;
+        const boardCenterY = boardRect.height / 2;
+
+        const rawPointerX = event.clientX - boardRect.left;
+        const rawPointerY = event.clientY - boardRect.top;
+
+        const pointerX = boardCenterX + (rawPointerX - boardCenterX) / z;
+        const pointerY = boardCenterY + (rawPointerY - boardCenterY) / z;
 
         const hit = [...placedObjects].reverse().find((item) => {
             const localX = pointerX - item.x;
@@ -1077,5 +1112,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         showCharacter,
         removeSelectedObject,
         getSidebarPreviewScale,
+        zoomLevel,
+        setZoomLevel,
     };
 }

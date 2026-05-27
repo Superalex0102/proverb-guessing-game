@@ -63,12 +63,28 @@ app.prepare().then(() => {
     socket.on('session:objects-changed', (payload) => {
       if (!payload || typeof payload !== 'object') return;
 
-      const { sessionId, objects } = payload;
+      const { sessionId, objects, zoomLevel, boardWidth, boardHeight } = payload;
       if (typeof sessionId !== 'string' || !Array.isArray(objects)) return;
 
       const current = sessionState.get(sessionId) ?? {};
-      sessionState.set(sessionId, { ...current, objects });
-      socket.to(sessionId).emit('session:objects-updated', { objects });
+      const nextState = { ...current, objects };
+      if (typeof zoomLevel === 'number') {
+        nextState.zoomLevel = zoomLevel;
+      }
+      if (typeof boardWidth === 'number') {
+        nextState.boardWidth = boardWidth;
+      }
+      if (typeof boardHeight === 'number') {
+        nextState.boardHeight = boardHeight;
+      }
+      sessionState.set(sessionId, nextState);
+      
+      socket.to(sessionId).emit('session:objects-updated', { 
+        objects, 
+        ...(typeof zoomLevel === 'number' ? { zoomLevel } : {}),
+        ...(typeof boardWidth === 'number' ? { boardWidth } : {}),
+        ...(typeof boardHeight === 'number' ? { boardHeight } : {})
+      });
     });
   });
 

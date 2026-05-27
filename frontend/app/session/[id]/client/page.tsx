@@ -74,6 +74,8 @@ export default function Page() {
         showCharacter,
         removeSelectedObject,
         getSidebarPreviewScale,
+        zoomLevel,
+        setZoomLevel,
     } = useGameSession(sessionId);
 
     const timelineFillRatio = Math.min(1, Math.max(0, progress / 100));
@@ -361,6 +363,8 @@ export default function Page() {
                             onShowCharacter={showCharacter}
                             onSendButtonClick={handleSendButtonClick}
                             getSidebarPreviewScale={getSidebarPreviewScale}
+                            zoomLevel={zoomLevel}
+                            setZoomLevel={setZoomLevel}
                         />
 
                         {status === 'constructing' && (

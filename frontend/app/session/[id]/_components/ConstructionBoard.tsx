@@ -12,6 +12,8 @@ import {
     getObjectSize,
     CHARACTER_EYES_STYLE,
     CHARACTER_MOUTH_STYLE,
+    ZOOM_MIN,
+    ZOOM_MAX,
 } from '../_hooks/useGameSession';
 
 type ConstructionBoardProps = {
@@ -29,6 +31,8 @@ type ConstructionBoardProps = {
     onShowCharacter: () => void;
     onSendButtonClick: () => void;
     getSidebarPreviewScale: (item: { id: string; name?: string; src: string }) => number;
+    zoomLevel: number;
+    setZoomLevel: (val: number) => void;
 };
 
 const sendButtonStyle = {
@@ -58,6 +62,8 @@ export function ConstructionBoard({
     onShowCharacter,
     onSendButtonClick,
     getSidebarPreviewScale,
+    zoomLevel,
+    setZoomLevel,
 }: ConstructionBoardProps) {
     const characterObject = placedObjects.find((item) => item.objectId === CHARACTER_OBJECT_ID);
     const selectedObject = placedObjects.find((item) => item.id === lastSelectedObjectId);
@@ -75,6 +81,89 @@ export function ConstructionBoard({
                 overflow: 'hidden',
             }}
         >
+            {status !== 'guessing' && (
+                <div style={{
+                    position: 'absolute',
+                    left: '-10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 40,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                }}>
+                    <div 
+                        onPointerDown={(e) => {
+                            const track = e.currentTarget;
+                            const rect = track.getBoundingClientRect();
+                            const thumbSize = 22;
+                            const trackPadding = 20; // Padding at top and bottom to avoid covering +/- signs
+                            
+                            const updateZoom = (clientY: number) => {
+                                const y = clientY - rect.top;
+                                const rangeMin = trackPadding + thumbSize / 2;
+                                const rangeMax = rect.height - trackPadding - thumbSize / 2;
+                                const clampedY = Math.max(rangeMin, Math.min(rangeMax, y));
+                                const percent = 1 - ((clampedY - rangeMin) / (rangeMax - rangeMin));
+                                const newZoom = ZOOM_MIN + percent * (ZOOM_MAX - ZOOM_MIN);
+                                setZoomLevel(Math.round(newZoom * 100) / 100);
+                            };
+                            
+                            updateZoom(e.clientY);
+                            track.setPointerCapture(e.pointerId);
+
+                            const onPointerMove = (ev: globalThis.PointerEvent) => {
+                                updateZoom(ev.clientY);
+                            };
+
+                            const onPointerUp = (ev: globalThis.PointerEvent) => {
+                                track.releasePointerCapture(ev.pointerId);
+                                document.removeEventListener('pointermove', onPointerMove);
+                                document.removeEventListener('pointerup', onPointerUp);
+                                document.removeEventListener('pointercancel', onPointerUp);
+                            };
+
+                            document.addEventListener('pointermove', onPointerMove);
+                            document.addEventListener('pointerup', onPointerUp);
+                            document.addEventListener('pointercancel', onPointerUp);
+                        }}
+                        style={{
+                            position: 'relative',
+                            height: '220px',
+                            width: '56px',
+                            cursor: 'pointer',
+                            touchAction: 'none',
+                            display: 'flex',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        <div style={{
+                            position: 'absolute',
+                            top: 0, bottom: 0, width: '100%',
+                            backgroundImage: "url('/images/ui/scroll/scroll.svg')",
+                            backgroundSize: '100% 100%',
+                            backgroundPosition: 'center',
+                            backgroundRepeat: 'no-repeat',
+                            pointerEvents: 'none',
+                        }} />
+                        <img 
+                            src="/images/ui/scroll/scroll_button.svg" 
+                            alt=""
+                            draggable={false}
+                            style={{
+                                position: 'absolute',
+                                width: '15px',
+                                height: '15px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                pointerEvents: 'none',
+                                userSelect: 'none',
+                                top: `${20 + (1 - Math.max(0, Math.min(1, (zoomLevel - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN)))) * (230 - 20 * 2 - 22)}px`,
+                            }} 
+                        />
+                    </div>
+                </div>
+            )}
             {status !== 'guessing' && !isCharacterVisible && (
                 <button
                     type="button"
@@ -95,29 +184,6 @@ export function ConstructionBoard({
                         backgroundSize: '100% 100%',
                         cursor: 'pointer',
                         zIndex: 12,
-                    }}
-                />
-            )}
-
-            {status !== 'guessing' && isCharacterVisible && characterObject && (
-                <button
-                    type="button"
-                    onClick={onRemoveCharacter}
-                    aria-label="Remove character"
-                    style={{
-                        position: 'absolute',
-                        left: `${characterObject.x + getObjectSize(characterObject.objectId, characterObject.src) / 2 + 30}px`,
-                        top: `${Math.max(0, characterObject.y + 10)}px`,
-                        width: '50px',
-                        height: '50px',
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        backgroundImage: "url('/images/ui/buttons/character_remove.svg')",
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'center',
-                        backgroundSize: '100% 100%',
-                        cursor: 'pointer',
-                        zIndex: 60,
                     }}
                 />
             )}
@@ -222,69 +288,102 @@ export function ConstructionBoard({
                 </div>
             </div>
 
-            {placedObjects.map((item) => {
-                const objectSize = getObjectSize(item.objectId, item.src);
-                const visualScale = 1.0;
-                const baseZIndex = item.objectId !== CHARACTER_OBJECT_ID ? 30 : 10;
-
-                return (
-                    <div
-                        key={item.id}
+            <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                transform: `scale(${zoomLevel})`,
+                transformOrigin: 'center center',
+                pointerEvents: 'none',
+            }}>
+                {status !== 'guessing' && isCharacterVisible && characterObject && (
+                    <button
+                        type="button"
+                        onClick={onRemoveCharacter}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        aria-label="Remove character"
                         style={{
-                            left: item.x,
-                            top: item.y,
-                            width: `${objectSize}px`,
-                            height: `${objectSize}px`,
-                            zIndex: draggingObjectId === item.id ? 50 : baseZIndex,
                             position: 'absolute',
-                            pointerEvents: 'none',
+                            left: `${characterObject.x + getObjectSize(characterObject.objectId, characterObject.src) / 2 + 30}px`,
+                            top: `${Math.max(0, characterObject.y + 10)}px`,
+                            width: '50px',
+                            height: '50px',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            backgroundImage: "url('/images/ui/buttons/character_remove.svg')",
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            backgroundSize: '100% 100%',
+                            cursor: 'pointer',
+                            zIndex: 60,
+                            pointerEvents: 'auto',
                         }}
-                        aria-label={`Move ${item.name}`}
-                    >
-                        <img
-                            src={item.src}
-                            alt={item.name}
+                    />
+                )}
+
+                {placedObjects.map((item) => {
+                    const objectSize = getObjectSize(item.objectId, item.src);
+                    const visualScale = 1.0;
+                    const baseZIndex = item.objectId !== CHARACTER_OBJECT_ID ? 30 : 10;
+
+                    return (
+                        <div
+                            key={item.id}
                             style={{
+                                left: item.x,
+                                top: item.y,
+                                width: `${objectSize}px`,
+                                height: `${objectSize}px`,
+                                zIndex: draggingObjectId === item.id ? 50 : baseZIndex,
                                 position: 'absolute',
-                                left: 0,
-                                top: 0,
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'contain',
                                 pointerEvents: 'none',
-                                userSelect: 'none',
-                                transform: `scale(${visualScale})`,
-                                transformOrigin: 'center center',
-                                filter: draggingObjectId === item.id
-                                    ? 'drop-shadow(1px 0 0 #3b82f6) drop-shadow(-1px 0 0 #3b82f6) drop-shadow(0 1px 0 #3b82f6) drop-shadow(0 -1px 0 #3b82f6) drop-shadow(0 8px 24px rgba(0,0,0,0.2))'
-                                    : item.isMoveable === false
-                                        ? 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.15))'
-                                        : 'none',
                             }}
-                            draggable={false}
-                        />
-
-                        {/* Eyes and mouth layers for character objects */}
-                        {item.eyesSrc && (
+                            aria-label={`Move ${item.name}`}
+                        >
                             <img
-                                src={item.eyesSrc}
-                                alt="Szem"
-                                style={CHARACTER_EYES_STYLE}
+                                src={item.src}
+                                alt={item.name}
+                                style={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    top: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'contain',
+                                    pointerEvents: 'none',
+                                    userSelect: 'none',
+                                    transform: `scale(${visualScale})`,
+                                    transformOrigin: 'center center',
+                                    filter: draggingObjectId === item.id
+                                        ? 'drop-shadow(1px 0 0 #3b82f6) drop-shadow(-1px 0 0 #3b82f6) drop-shadow(0 1px 0 #3b82f6) drop-shadow(0 -1px 0 #3b82f6) drop-shadow(0 8px 24px rgba(0,0,0,0.2))'
+                                        : item.isMoveable === false
+                                            ? 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.15))'
+                                            : 'none',
+                                }}
                                 draggable={false}
                             />
-                        )}
 
-                        {item.mouthSrc && (
-                            <img
-                                src={item.mouthSrc}
-                                alt="Száj"
-                                style={CHARACTER_MOUTH_STYLE}
-                                draggable={false}
-                            />
-                        )}
-                    </div>
-                );
-            })}
+                            {/* Eyes and mouth layers for character objects */}
+                            {item.eyesSrc && (
+                                <img
+                                    src={item.eyesSrc}
+                                    alt="Szem"
+                                    style={CHARACTER_EYES_STYLE}
+                                    draggable={false}
+                                />
+                            )}
+
+                            {item.mouthSrc && (
+                                <img
+                                    src={item.mouthSrc}
+                                    alt="Száj"
+                                    style={CHARACTER_MOUTH_STYLE}
+                                    draggable={false}
+                                />
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
