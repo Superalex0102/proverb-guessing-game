@@ -10,6 +10,8 @@ import {
     TIMELINE_FILL_INSET,
     TIMELINE_HEIGHT_PX,
     getObjectSize,
+    CHARACTER_EYES_STYLE,
+    CHARACTER_MOUTH_STYLE,
 } from '../_hooks/useGameSession';
 
 type ConstructionBoardProps = {
@@ -267,15 +269,7 @@ export function ConstructionBoard({
                             <img
                                 src={item.eyesSrc}
                                 alt="Szem"
-                                style={{
-                                    position: 'absolute',
-                                    width: '140px',
-                                    height: '140px',
-                                    left: '68px',
-                                    top: '-8px',
-                                    pointerEvents: 'none',
-                                    userSelect: 'none',
-                                }}
+                                style={CHARACTER_EYES_STYLE}
                                 draggable={false}
                             />
                         )}
@@ -284,15 +278,7 @@ export function ConstructionBoard({
                             <img
                                 src={item.mouthSrc}
                                 alt="Száj"
-                                style={{
-                                    position: 'absolute',
-                                    width: '140px',
-                                    height: '140px',
-                                    left: '69px',
-                                    top: '19px',
-                                    pointerEvents: 'none',
-                                    userSelect: 'none',
-                                }}
+                                style={CHARACTER_MOUTH_STYLE}
                                 draggable={false}
                             />
                         )}

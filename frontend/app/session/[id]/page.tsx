@@ -17,10 +17,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { isPlacedObjectArray, PlacedObject } from '@/lib/placed-object';
 import { getSocket } from '@/lib/socket';
 import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
-import { getObjectSize } from './_hooks/useGameSession';
+import { getObjectSize, CHARACTER_EYES_STYLE, CHARACTER_MOUTH_STYLE } from './_hooks/useGameSession';
 
 export default function Page() {
-  const CHARACTER_OBJECT_ID = 'karakter_siman.svg';
   const params = useParams<{ id: string }>();
 
   const [sessionExists, setSessionExists] = useState<boolean | null>(null);
@@ -524,14 +523,7 @@ export default function Page() {
                     <img
                       src={item.eyesSrc}
                       alt="Szem"
-                      style={{
-                        position: 'absolute',
-                        width: '160px',
-                        height: '160px',
-                        left: '78px',
-                        top: '-9px',
-                        pointerEvents: 'none',
-                      }}
+                      style={CHARACTER_EYES_STYLE}
                       draggable={false}
                     />
                   )}
@@ -540,14 +532,7 @@ export default function Page() {
                     <img
                       src={item.mouthSrc}
                       alt="Száj"
-                      style={{
-                        position: 'absolute',
-                        width: '180px',
-                        height: '180px',
-                        left: '68px',
-                        top: '6px',
-                        pointerEvents: 'none',
-                      }}
+                      style={CHARACTER_MOUTH_STYLE}
                       draggable={false}
                     />
                   )}

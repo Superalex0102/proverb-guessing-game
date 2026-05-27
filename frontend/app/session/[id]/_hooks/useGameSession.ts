@@ -39,6 +39,26 @@ export type VisibleBounds = {
 
 export const PLACED_OBJECT_SIZE = 210;
 export const CHARACTER_OBJECT_SIZE = 280;
+export const CHARACTER_EYES_STYLE = {
+    position: 'absolute',
+    width: '50%',
+    height: '50%',
+    left: '24.29%',
+    top: '-2.86%',
+    pointerEvents: 'none',
+    userSelect: 'none',
+} as const;
+
+export const CHARACTER_MOUTH_STYLE = {
+    position: 'absolute',
+    width: '50%',
+    height: '50%',
+    left: '24.64%',
+    top: '6.79%',
+    pointerEvents: 'none',
+    userSelect: 'none',
+} as const;
+
 export const CHARACTER_OBJECT_ID = 'karakter_siman.svg';
 export const CHARACTER_OBJECT_SRC = '/images/characters/karakter_siman.svg';
 
