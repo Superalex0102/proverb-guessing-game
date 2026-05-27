@@ -186,7 +186,7 @@ export function ConstructionBoard({
                         backgroundPosition: 'center',
                         backgroundSize: '100% 100%',
                         cursor: 'pointer',
-                        zIndex: 12,
+                        zIndex: 100,
                     }}
                 />
             )}
@@ -211,7 +211,7 @@ export function ConstructionBoard({
                         backgroundSize: '100% 100%',
                         cursor: lastSelectedObjectId ? 'pointer' : 'not-allowed',
                         opacity: lastSelectedObjectId ? 1 : 0.45,
-                        zIndex: 8,
+                        zIndex: 100,
                     }}
                 />
             )}
@@ -224,7 +224,7 @@ export function ConstructionBoard({
                     position: 'absolute',
                     left: '30px',
                     bottom: '16px',
-                    zIndex: 9,
+                    zIndex: 100,
                 }}
                 aria-label={status === 'guessing' ? 'Finish game' : 'Start guessing phase'}
             />
@@ -237,7 +237,7 @@ export function ConstructionBoard({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1px',
-                zIndex: 5,
+                zIndex: 1,
                 pointerEvents: 'none',
             }}>
                 {currentProverb && (
@@ -297,6 +297,7 @@ export function ConstructionBoard({
                 transform: `scale(${zoomLevel})`,
                 transformOrigin: 'center center',
                 pointerEvents: 'none',
+                zIndex: 2,
             }}>
                 {status !== 'guessing' && isCharacterVisible && characterObject && (
                     <button
@@ -317,7 +318,7 @@ export function ConstructionBoard({
                             backgroundPosition: 'center',
                             backgroundSize: '100% 100%',
                             cursor: 'pointer',
-                            zIndex: 60,
+                            zIndex: 100,
                             pointerEvents: 'auto',
                         }}
                     />
