@@ -85,8 +85,8 @@ export function ConstructionBoard({
                 <div style={{
                     position: 'absolute',
                     left: '-10px',
-                    top: '100px',
-                    bottom: '80px',
+                    top: '85px',
+                    bottom: '75px',
                     zIndex: 40,
                     display: 'flex',
                     flexDirection: 'column',
@@ -132,7 +132,7 @@ export function ConstructionBoard({
                         style={{
                             position: 'relative',
                             height: '100%',
-                            maxHeight: '220px',
+                            maxHeight: '320px',
                             minHeight: '120px',
                             width: '56px',
                             cursor: 'pointer',
