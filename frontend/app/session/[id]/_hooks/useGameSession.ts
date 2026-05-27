@@ -92,7 +92,7 @@ export type UseGameSessionResult = {
     rerollProverb: () => Promise<void>;
     handleSendButtonClick: () => void;
     startNextRound: () => void;
-    startDraggingFromTray: (event: React.PointerEvent<HTMLButtonElement>, objectId: string) => void;
+    placeObjectFromTray: (objectId: string) => void;
     startDraggingPlacedObject: (event: React.PointerEvent<HTMLDivElement>) => void;
     removeCharacter: () => void;
     showCharacter: () => void;
@@ -107,12 +107,6 @@ function createPlacedObjectId(objectId: string): string {
 export function getObjectSize(objectId: string, src?: string): number {
     if (objectId === CHARACTER_OBJECT_ID || src === CHARACTER_OBJECT_SRC) {
         return CHARACTER_OBJECT_SIZE;
-    }
-    if (src) {
-        const natural = objectNaturalSizeMap[src];
-        if (natural) {
-            return Math.max(natural.w, natural.h);
-        }
     }
 
     return PLACED_OBJECT_SIZE;
@@ -815,32 +809,28 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         return placedId;
     }, [clampToBoard, objectCatalog]);
 
-    const startDraggingFromTray = useCallback((event: React.PointerEvent<HTMLButtonElement>, objectId: string) => {
+    const placeObjectFromTray = useCallback((objectId: string) => {
         const board = constructionBoardRef.current;
         if (!board) return;
 
-        const boardRect = board.getBoundingClientRect();
-
         const object = objectCatalog.find((item) => item.id === objectId);
+        const visibleBounds = objectVisibleBoundsRef.current[objectId] ?? getDefaultVisibleBounds(objectId, object?.src);
+        
+        const visibleWidth = visibleBounds.maxX - visibleBounds.minX;
+        const visibleHeight = visibleBounds.maxY - visibleBounds.minY;
+        
         const objectSize = getObjectSize(objectId, object?.src);
-
-        const x = event.clientX - boardRect.left - objectSize / 2;
-        const y = event.clientY - boardRect.top - objectSize / 2;
+        const stagger = Math.min(4, placedObjects.length % 5) * 24;
+        
+        const x = (board.offsetWidth / 2) - visibleBounds.minX - (visibleWidth / 2) + stagger;
+        const y = (board.offsetHeight / 2) - visibleBounds.minY - (visibleHeight / 2) + stagger;
 
         const newPlacedId = addObjectToBoard(objectId, x, y);
         if (!newPlacedId) return;
 
         setLastSelectedObjectId(newPlacedId);
-        draggingObjectIdRef.current = newPlacedId;
-        setDraggingObjectId(newPlacedId);
-
-        draggingOffsetRef.current = {
-            x: objectSize / 2,
-            y: objectSize / 2,
-        };
-
-        event.currentTarget.setPointerCapture(event.pointerId);
-    }, [addObjectToBoard]);
+        setDraggingObjectId(null);
+    }, [addObjectToBoard, getDefaultVisibleBounds, objectCatalog, placedObjects.length]);
 
     useEffect(() => {
         const handlePointerMove = (event: PointerEvent) => {
@@ -1058,7 +1048,7 @@ export function useGameSession(sessionId?: string): UseGameSessionResult {
         rerollProverb,
         handleSendButtonClick,
         startNextRound,
-        startDraggingFromTray,
+        placeObjectFromTray,
         startDraggingPlacedObject,
         removeCharacter,
         showCharacter,

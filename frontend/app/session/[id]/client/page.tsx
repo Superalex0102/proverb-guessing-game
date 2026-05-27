@@ -68,7 +68,7 @@ export default function Page() {
         rerollProverb,
         handleSendButtonClick,
         startNextRound,
-        startDraggingFromTray,
+        placeObjectFromTray,
         startDraggingPlacedObject,
         removeCharacter,
         showCharacter,
@@ -360,6 +360,7 @@ export default function Page() {
                             onRemoveCharacter={removeCharacter}
                             onShowCharacter={showCharacter}
                             onSendButtonClick={handleSendButtonClick}
+                            getSidebarPreviewScale={getSidebarPreviewScale}
                         />
 
                         {status === 'constructing' && (
@@ -378,7 +379,7 @@ export default function Page() {
                                 setActiveObjectCategoryId={setActiveObjectCategoryId}
                                 setSelectedEyeId={setSelectedEyeId}
                                 setSelectedMouthId={setSelectedMouthId}
-                                startDraggingFromTray={startDraggingFromTray}
+                                placeObjectFromTray={placeObjectFromTray}
                                 getSidebarPreviewScale={getSidebarPreviewScale}
                             />
                         )}

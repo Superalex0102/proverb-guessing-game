@@ -1,7 +1,6 @@
 'use client';
 
-import type { PointerEvent } from 'react';
-
+import { useRef, useEffect } from 'react';
 import {
     ObjectCatalogCategory,
     ObjectCatalogItem,
@@ -31,7 +30,7 @@ type GameSidebarProps = {
     setActiveObjectCategoryId: (value: string | null) => void;
     setSelectedEyeId: (value: string | null) => void;
     setSelectedMouthId: (value: string | null) => void;
-    startDraggingFromTray: (event: PointerEvent<HTMLButtonElement>, objectId: string) => void;
+    placeObjectFromTray: (objectId: string) => void;
     getSidebarPreviewScale: (item: ObjectCatalogItem) => number;
 };
 
@@ -50,11 +49,19 @@ export function GameSidebar({
     setActiveObjectCategoryId,
     setSelectedEyeId,
     setSelectedMouthId,
-    startDraggingFromTray,
+    placeObjectFromTray,
     getSidebarPreviewScale,
 }: GameSidebarProps) {
+    const containerRef = useRef<HTMLElement>(null);
     const activeObjectCategory = objectCategories.find((category) => category.id === activeObjectCategoryId);
     const activeObjectItems = activeObjectCategory?.items ?? [];
+
+    useEffect(() => {
+        if (containerRef.current) {
+            containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+        }
+    }, [activeSidebarMenu, activeObjectCategoryId]);
+
     const handleBackClick = () => {
         if (activeSidebarMenu === 'props' && activeObjectCategory) {
             setActiveObjectCategoryId(null);
@@ -65,22 +72,25 @@ export function GameSidebar({
     };
 
     return (
-        <aside style={{
-            width: '38%',
-            flexShrink: 0,
-            borderLeft: '1px solid #e2e8f0',
-            background: '#dbf5f9',
-            padding: '8px',
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            gap: activeSidebarMenu === 'root' ? '10px' : '0px',
-            WebkitOverflowScrolling: 'touch',
-            height: '90%',
-            alignSelf: 'flex-end',
-        }}>
+        <aside
+            ref={containerRef}
+            style={{
+                width: '38%',
+                flexShrink: 0,
+                borderLeft: '1px solid #e2e8f0',
+                background: '#dbf5f9',
+                padding: '8px',
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: activeSidebarMenu === 'root' ? '10px' : '0px',
+                WebkitOverflowScrolling: 'touch',
+                height: '90%',
+                alignSelf: 'flex-end',
+                touchAction: 'pan-y',
+            }}>
             {activeSidebarMenu !== 'root' && activeSidebarEntry && (
                 <div style={{
                     width: '100%',
@@ -277,30 +287,47 @@ export function GameSidebar({
                                         borderRadius: '0px',
                                         padding: '0px',
                                         cursor: 'pointer',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        minHeight: `${SIDEBAR_EYES_ITEM_MIN_HEIGHT}px`,
+                                        display: 'block',
+                                        position: 'relative',
+                                        height: `${SIDEBAR_EYES_ITEM_MIN_HEIGHT}px`,
                                         minWidth: '120px',
                                         overflow: 'hidden',
+                                        touchAction: 'pan-y',
                                     }}
                                 >
-                                    <img
-                                        src={displaySrc}
-                                        alt={item.name}
+                                    <div
                                         style={{
-                                            width: `${SIDEBAR_PREVIEW_SIZE}px`,
-                                            height: `${SIDEBAR_PREVIEW_SIZE}px`,
-                                            objectFit: 'contain',
-                                            objectPosition: 'center bottom',
-                                            pointerEvents: 'none',
-                                            userSelect: 'none',
-                                            transform: `translateY(${SIDEBAR_PREVIEW_VERTICAL_LIFT_PX}px) scale(${sidebarScale * SIDEBAR_PREVIEW_SCALE_MULTIPLIER})`,
-                                            transformOrigin: 'center bottom',
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            bottom: 0,
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'flex-end',
+                                            padding: '14px',
+                                            boxSizing: 'border-box',
                                         }}
-                                        draggable={false}
-                                    />
+                                    >
+                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                                            <img
+                                                src={displaySrc}
+                                                alt={item.name}
+                                                style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    objectFit: 'contain',
+                                                    objectPosition: 'center bottom',
+                                                    pointerEvents: 'none',
+                                                    userSelect: 'none',
+                                                    transform: `translateY(${SIDEBAR_PREVIEW_VERTICAL_LIFT_PX}px) scale(${sidebarScale * SIDEBAR_PREVIEW_SCALE_MULTIPLIER})`,
+                                                    transformOrigin: 'center bottom',
+                                                }}
+                                                draggable={false}
+                                            />
+                                        </div>
+                                    </div>
                                 </button>
                             );
                         })}
@@ -352,6 +379,7 @@ export function GameSidebar({
                                         gap: '6px',
                                         minHeight: '132px',
                                         overflow: 'hidden',
+                                        touchAction: 'pan-y',
                                     }}
                                 >
                                     <img
@@ -400,7 +428,7 @@ export function GameSidebar({
                                     <button
                                         key={item.id}
                                         type="button"
-                                        onPointerDown={(event) => startDraggingFromTray(event, item.id)}
+                                        onClick={() => placeObjectFromTray(item.id)}
                                         style={{
                                             width: '100%',
                                             backgroundColor: 'transparent',
@@ -412,30 +440,48 @@ export function GameSidebar({
                                             borderRadius: '12px',
                                             padding: '0px',
                                             cursor: 'grab',
-                                            touchAction: 'none',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '0px',
-                                            minHeight: `${SIDEBAR_PROPS_ITEM_MIN_HEIGHT}px`,
+                                            touchAction: 'pan-y',
+                                            display: 'block',
+                                            position: 'relative',
+                                            height: `${SIDEBAR_PROPS_ITEM_MIN_HEIGHT}px`,
                                             overflow: 'hidden',
                                         }}
                                     >
-                                        <img
-                                            src={item.src}
-                                            alt={item.name}
-                                            style={{
-                                                width: `${SIDEBAR_PREVIEW_SIZE}px`,
-                                                height: `${SIDEBAR_PREVIEW_SIZE}px`,
-                                                objectFit: 'contain',
-                                                objectPosition: 'center center',
-                                                pointerEvents: 'none',
-                                                userSelect: 'none',
-                                                transform: `scale(${sidebarScale})`,
-                                                transformOrigin: 'center center',
-                                            }}
-                                            draggable={false}
-                                        />
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            bottom: 0,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: '14px',
+                                            boxSizing: 'border-box',
+                                        }}>
+                                            <div style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}>
+                                                <img
+                                                    src={item.src}
+                                                    alt={item.name}
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        objectFit: 'contain',
+                                                        pointerEvents: 'none',
+                                                        userSelect: 'none',
+                                                        transform: `scale(${sidebarScale})`,
+                                                        transformOrigin: 'center center',
+                                                    }}
+                                                    draggable={false}
+                                                />
+                                            </div>
+                                        </div>
                                     </button>
                                 );
                             })}
@@ -484,30 +530,45 @@ export function GameSidebar({
                                         borderRadius: '0px',
                                         padding: '0px',
                                         cursor: 'pointer',
+                                        display: 'block',
+                                        position: 'relative',
+                                        height: `${SIDEBAR_MOUTH_ITEM_MIN_HEIGHT}px`,
+                                        minWidth: '120px',
+                                        overflow: 'hidden',
+                                        touchAction: 'pan-y',
+                                    }}
+                                >
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
-                                        justifyContent: 'center',
-                                        minHeight: `${SIDEBAR_MOUTH_ITEM_MIN_HEIGHT}px`,
-                                        minWidth: '120px',
-                                        overflow: 'hidden',
-                                    }}
-                                >
-                                    <img
-                                        src={displaySrc}
-                                        alt={item.name}
-                                        style={{
-                                            width: `${SIDEBAR_PREVIEW_SIZE}px`,
-                                            height: `${SIDEBAR_PREVIEW_SIZE}px`,
-                                            objectFit: 'contain',
-                                            objectPosition: 'center bottom',
-                                            pointerEvents: 'none',
-                                            userSelect: 'none',
-                                            transform: `translateY(${SIDEBAR_PREVIEW_VERTICAL_LIFT_PX}px) scale(${Math.min(sidebarScale, 1.1)})`,
-                                            transformOrigin: 'center bottom',
-                                        }}
-                                        draggable={false}
-                                    />
+                                        justifyContent: 'flex-end',
+                                        padding: '14px',
+                                        boxSizing: 'border-box',
+                                    }}>
+                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                                            <img
+                                                src={displaySrc}
+                                                alt={item.name}
+                                                style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    objectFit: 'contain',
+                                                    objectPosition: 'center bottom',
+                                                    pointerEvents: 'none',
+                                                    userSelect: 'none',
+                                                    transform: `translateY(${SIDEBAR_PREVIEW_VERTICAL_LIFT_PX}px) scale(${sidebarScale * 0.85})`,
+                                                    transformOrigin: 'center bottom',
+                                                }}
+                                                draggable={false}
+                                            />
+                                        </div>
+                                    </div>
                                 </button>
                             );
                         })}

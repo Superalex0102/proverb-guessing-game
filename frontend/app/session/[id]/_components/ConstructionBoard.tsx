@@ -26,6 +26,7 @@ type ConstructionBoardProps = {
     onRemoveCharacter: () => void;
     onShowCharacter: () => void;
     onSendButtonClick: () => void;
+    getSidebarPreviewScale: (item: { id: string; name?: string; src: string }) => number;
 };
 
 const sendButtonStyle = {
@@ -54,6 +55,7 @@ export function ConstructionBoard({
     onRemoveCharacter,
     onShowCharacter,
     onSendButtonClick,
+    getSidebarPreviewScale,
 }: ConstructionBoardProps) {
     const characterObject = placedObjects.find((item) => item.objectId === CHARACTER_OBJECT_ID);
     const selectedObject = placedObjects.find((item) => item.id === lastSelectedObjectId);
@@ -220,6 +222,7 @@ export function ConstructionBoard({
 
             {placedObjects.map((item) => {
                 const objectSize = getObjectSize(item.objectId, item.src);
+                const visualScale = 1.0;
                 const baseZIndex = item.objectId !== CHARACTER_OBJECT_ID ? 30 : 10;
 
                 return (
@@ -248,6 +251,8 @@ export function ConstructionBoard({
                                 objectFit: 'contain',
                                 pointerEvents: 'none',
                                 userSelect: 'none',
+                                transform: `scale(${visualScale})`,
+                                transformOrigin: 'center center',
                                 filter: draggingObjectId === item.id
                                     ? 'drop-shadow(1px 0 0 #3b82f6) drop-shadow(-1px 0 0 #3b82f6) drop-shadow(0 1px 0 #3b82f6) drop-shadow(0 -1px 0 #3b82f6) drop-shadow(0 8px 24px rgba(0,0,0,0.2))'
                                     : item.isMoveable === false
