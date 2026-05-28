@@ -484,24 +484,6 @@ export function GameSidebar({
                                     </button>
                                 );
                             })}
-
-                            {/* Add an invisible item to fill the last odd slot, if necessary, to keep the grid layout consistent */}
-                            {activeObjectItems.length % 2 !== 0 && (
-                                <div
-                                    style={{
-                                        width: '100%',
-                                        backgroundColor: 'transparent',
-                                        backgroundImage: `url('/images/ui/${(activeObjectItems.length % SIDEBAR_PANEL_VARIANTS) + 1}.svg')`,
-                                        backgroundRepeat: 'no-repeat',
-                                        backgroundPosition: 'center',
-                                        backgroundSize: '100% 100%',
-                                        border: 'none',
-                                        borderRadius: '12px',
-                                        height: `${SIDEBAR_PROPS_ITEM_MIN_HEIGHT}px`,
-                                        pointerEvents: 'none',
-                                    }}
-                                />
-                            )}
                         </div>
                     )}
                 </div>
