@@ -400,14 +400,6 @@ export default function Page() {
                         position: 'relative',
                         paddingRight: '20px',
                     }}>
-                        <h1 style={{
-                            fontSize: '32px',
-                            fontWeight: 700,
-                            color: '#0d9488',
-                            margin: 0,
-                        }}>
-                            {guessingResult === 'success' ? 'Sikeres találat!' : 'Lejárt az idő!'}
-                        </h1>
                         <button
                             type="button"
                             onClick={startNextRound}
