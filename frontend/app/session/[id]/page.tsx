@@ -10,10 +10,11 @@ import {
   Smartphone,
   Sparkles,
 } from 'lucide-react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
+import { POST_GAME_COUNTDOWN_MS } from '@/lib/game-timers';
 import { isPlacedObjectArray, PlacedObject } from '@/lib/placed-object';
 import { getSocket } from '@/lib/socket';
 import { isSessionPhase, SessionPhase } from '@/lib/session-phase';
@@ -28,6 +29,8 @@ export default function Page() {
   const [sourceBoardSize, setSourceBoardSize] = useState<{ width: number; height: number } | null>(null);
   const [showLink, setShowLink] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [countdown, setCountdown] = useState(0);
+  const router = useRouter();
 
   const tvBoardContainerRef = useRef<HTMLDivElement>(null);
 
@@ -148,6 +151,29 @@ export default function Page() {
       body.style.margin = prevBodyMargin;
     };
   }, []);
+
+  useEffect(() => {
+    if (phase !== 'finished') {
+      setCountdown(0);
+      return;
+    }
+
+    const totalSeconds = Math.floor(POST_GAME_COUNTDOWN_MS / 1000);
+    setCountdown(totalSeconds);
+
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          router.push('/');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => { clearInterval(interval); };
+  }, [phase, router]);
 
   const currentBoardSize = useMemo(() => {
     if (sourceBoardSize) return sourceBoardSize;
@@ -548,6 +574,34 @@ export default function Page() {
               );
             })}
           </div>
+
+          {phase === 'finished' && countdown > 0 && (
+            <div
+              style={{
+                position: 'fixed',
+                bottom: '32px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: 'rgba(15, 23, 42, 0.85)',
+                color: '#f8fafc',
+                padding: '16px 32px',
+                borderRadius: '999px',
+                fontSize: 'clamp(1rem, 2vw, 1.4rem)',
+                fontWeight: 700,
+                zIndex: 100,
+                backdropFilter: 'blur(8px)',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+              }}
+            >
+              Új játék indul:
+              <span style={{ color: '#fbbf24', fontSize: '1.2em' }}>
+                {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );
