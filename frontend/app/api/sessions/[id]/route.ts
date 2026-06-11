@@ -37,6 +37,41 @@ function parseGuessingResult(value: unknown): GuessingResult | null {
   return isGuessingResult(value) ? value : null;
 }
 
+function notifyPhaseChanged(
+  sessionId: string,
+  phase: string,
+  phaseEndAt: string | null,
+  currentProverb: string | null,
+  proverbRerollsLeft: number,
+  guessingResult: GuessingResult | null,
+) {
+  const g = globalThis as Record<string, unknown>;
+  const io = g.__io as { to: (room: string) => { emit: (event: string, payload: Record<string, unknown>) => void } } | undefined;
+  const sessionState = g.__sessionState as Map<string, Record<string, unknown>> | undefined;
+  const schedulePhaseTimeout = g.__schedulePhaseTimeout as ((sessionId: string, phase: string, phaseEndAt: string | null) => void) | undefined;
+
+  const payload: Record<string, unknown> = {
+    phase,
+    phaseEndAt: phaseEndAt ?? null,
+    currentProverb: currentProverb ?? null,
+    proverbRerollsLeft,
+    guessingResult: guessingResult ?? null,
+  };
+
+  if (sessionState) {
+    const current = sessionState.get(sessionId) ?? {};
+    sessionState.set(sessionId, { ...current, ...payload });
+  }
+
+  if (io) {
+    io.to(sessionId).emit('session:phase-changed', payload);
+  }
+
+  if (schedulePhaseTimeout) {
+    schedulePhaseTimeout(sessionId, phase, phaseEndAt);
+  }
+}
+
 export async function GET(_: Request, context: RouteContext) {
   const { id } = await context.params;
   const session = await getSessionById(id);
@@ -92,6 +127,8 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
+    notifyPhaseChanged(id, updatedSession.phase, updatedSession.phaseEndAt, updatedSession.currentProverb, updatedSession.proverbRerollsLeft, updatedSession.guessingResult);
+
     return NextResponse.json({ session: updatedSession });
   }
 
@@ -141,6 +178,8 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
+
+  notifyPhaseChanged(id, session.phase, session.phaseEndAt, session.currentProverb, session.proverbRerollsLeft, session.guessingResult);
 
   return NextResponse.json({ session });
 }

@@ -85,6 +85,10 @@ app.prepare().then(() => {
     },
   });
 
+  global.__io = io;
+  global.__sessionState = sessionState;
+  global.__schedulePhaseTimeout = schedulePhaseTimeout;
+
   io.on('connection', (socket) => {
     socket.on('session:join', (sessionId) => {
       if (typeof sessionId !== 'string' || sessionId.length === 0) return;
