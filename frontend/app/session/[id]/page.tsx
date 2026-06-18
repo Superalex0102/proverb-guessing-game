@@ -1,15 +1,7 @@
 'use client';
 
 import { Link as NextLink } from '@nextui-org/react';
-import {
-  ArrowLeft,
-  ExternalLink,
-  Link2,
-  QrCode,
-  ScanLine,
-  Smartphone,
-  Sparkles,
-} from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -193,19 +185,6 @@ export default function Page() {
     return { width: 390, height: 844 };
   }, [sourceBoardSize, placedObjects]);
 
-  const tvScale = useMemo(() => {
-    if (typeof window === 'undefined') return 1;
-
-    const containerW = window.innerWidth - 48;
-    const containerH = window.innerHeight - 48 - 80 - 80;
-
-    const scaleX = containerW / currentBoardSize.width;
-    const scaleY = containerH / currentBoardSize.height;
-    const scale = Math.min(scaleX, scaleY) * 0.6;
-
-    return Number.isFinite(scale) && scale > 0 ? scale : 1;
-  }, [currentBoardSize]);
-
   const activeTvScale = useMemo(() => {
     if (typeof window === 'undefined') return 1;
 
@@ -221,20 +200,6 @@ export default function Page() {
 
   const isGameActive = phase !== 'lobby';
 
-  const shellStyle = {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px',
-    color: '#0f172a',
-    background:
-      'radial-gradient(circle at 18% 16%, rgba(127, 182, 183, 0.16) 0, rgba(127, 182, 183, 0.16) 11%, transparent 11%), radial-gradient(circle at 82% 18%, rgba(13, 148, 136, 0.12) 0, rgba(13, 148, 136, 0.12) 9%, transparent 9%), radial-gradient(circle at 82% 82%, rgba(59, 130, 246, 0.08) 0, rgba(59, 130, 246, 0.08) 13%, transparent 13%), #dbf5f9',
-    position: 'relative',
-    overflowX: 'hidden',
-    overflowY: 'auto',
-  } as const;
-
   const cardStyle = {
     position: 'relative',
     width: 'min(100%, 1180px)',
@@ -249,45 +214,6 @@ export default function Page() {
     display: 'grid',
     gap: '16px',
     zIndex: 1,
-  } as const;
-
-  const backdropA = {
-    position: 'absolute',
-    top: '-70px',
-    left: '-110px',
-    width: '280px',
-    height: '280px',
-    borderRadius: '50%',
-    background: 'rgba(14, 165, 233, 0.20)',
-    filter: 'blur(18px)',
-    pointerEvents: 'none',
-  } as const;
-
-  const backdropB = {
-    position: 'absolute',
-    right: '-120px',
-    bottom: '-120px',
-    width: '340px',
-    height: '340px',
-    borderRadius: '50%',
-    background: 'rgba(245, 158, 11, 0.18)',
-    filter: 'blur(22px)',
-    pointerEvents: 'none',
-  } as const;
-
-  const topBarStyle = {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: '12px',
-    flexWrap: 'wrap',
-  } as const;
-
-  const titleBlockStyle = {
-    display: 'grid',
-    gap: '8px',
-    maxWidth: '760px',
-    paddingLeft: '8px',
   } as const;
 
   const titleStyle = {
@@ -307,13 +233,6 @@ export default function Page() {
     color: '#334155',
   } as const;
 
-  const pillsRowStyle = {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '10px',
-    alignItems: 'center',
-  } as const;
-
   const pillStyle = {
     display: 'inline-flex',
     alignItems: 'center',
@@ -326,33 +245,6 @@ export default function Page() {
     color: '#0f172a',
     fontSize: '0.86rem',
     fontWeight: 700,
-  } as const;
-
-  const contentStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1.7fr) minmax(320px, 0.9fr)',
-    gap: '16px',
-    alignItems: 'stretch',
-    flex: 1,
-  } as const;
-
-  const boardFrameStyle = {
-    position: 'relative',
-    minHeight: 0,
-    borderRadius: '24px',
-    overflow: 'hidden',
-    background: 'rgba(255, 255, 255, 0.42)',
-    border: '1px solid rgba(127, 182, 183, 0.22)',
-    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.45)',
-    display: 'grid',
-  } as const;
-
-  const boardStageStyle = {
-    position: 'relative',
-    minHeight: '430px',
-    background:
-      'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.46) 0 6px, transparent 7px), radial-gradient(circle at 76% 24%, rgba(127, 182, 183, 0.22) 0 8px, transparent 9px), radial-gradient(circle at 70% 78%, rgba(255, 255, 255, 0.18) 0 10px, transparent 11px), #dbf5f9',
-    boxShadow: 'inset 0 0 40px rgba(0,0,0,0.05)',
   } as const;
 
   const activeBoardShellStyle = {
@@ -372,55 +264,6 @@ export default function Page() {
     overflow: 'hidden',
   } as const;
 
-  const sessionTagStyle = {
-    position: 'absolute',
-    left: '16px',
-    bottom: '14px',
-    fontSize: 'clamp(0.8rem, 1vw, 0.95rem)',
-    color: '#64748b',
-    whiteSpace: 'nowrap',
-    fontFamily: 'monospace',
-    pointerEvents: 'none',
-    zIndex: 5,
-    background: 'rgba(255,255,255,0.68)',
-    padding: '5px 9px',
-    borderRadius: '999px',
-    border: '1px solid rgba(148, 163, 184, 0.24)',
-  } as const;
-
-  const qrPanelStyle = {
-    position: 'relative',
-    borderRadius: '24px',
-    background: 'rgba(255, 255, 255, 0.52)',
-    border: '1px solid rgba(127, 182, 183, 0.24)',
-    padding: '16px',
-    display: 'grid',
-    gap: '12px',
-    alignContent: 'start',
-    boxShadow: '0 18px 44px rgba(15, 23, 42, 0.09)',
-    backdropFilter: 'blur(10px)',
-  } as const;
-
-  const qrWrapperStyle = {
-    display: 'grid',
-    placeItems: 'center',
-    padding: '12px',
-    borderRadius: '18px',
-    background: 'rgba(255,255,255,0.88)',
-    border: '1px solid rgba(226, 232, 240, 0.9)',
-    boxShadow: '0 18px 30px rgba(15, 23, 42, 0.08)',
-  } as const;
-
-  const qrInfoStyle = {
-    display: 'grid',
-    gap: '8px',
-  } as const;
-
-  const qrActionsStyle = {
-    display: 'grid',
-    gap: '8px',
-  } as const;
-
   const qrButtonStyle = {
     display: 'inline-flex',
     alignItems: 'center',
@@ -435,25 +278,6 @@ export default function Page() {
     fontWeight: 700,
     textDecoration: 'none',
     boxShadow: '0 10px 20px rgba(15, 23, 42, 0.06)',
-  } as const;
-
-  const manualLinkPanelStyle = {
-    display: 'grid',
-    gap: '6px',
-    padding: '12px',
-    borderRadius: '16px',
-    background: 'rgba(248, 250, 252, 0.9)',
-    border: '1px dashed rgba(148, 163, 184, 0.5)',
-  } as const;
-
-  const manualLinkStyle = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-    color: '#0f766e',
-    textDecoration: 'none',
-    fontWeight: 700,
-    wordBreak: 'break-all',
   } as const;
 
   const loadingStateStyle = {
@@ -608,216 +432,72 @@ export default function Page() {
   }
 
   return (
-    <div style={shellStyle}>
-      <div style={backdropA} />
-      <div style={backdropB} />
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 'clamp(28px, 4vw, 48px)',
+      padding: '24px',
+      background: '#e6f4f8',
+      color: '#000',
+    }}>
+      <h1 style={{
+        margin: 0,
+        fontSize: 'clamp(1.8rem, 4vw, 3.2rem)',
+        fontWeight: 800,
+        letterSpacing: '-0.02em',
+        textAlign: 'center',
+      }}>
+        Olvass be és játssz!
+      </h1>
 
-      <main style={cardStyle}>
-        <div style={topBarStyle}>
-          <div style={titleBlockStyle}>
-            <div style={pillsRowStyle}>
-              <span style={pillStyle}>
-                <Sparkles size={16} />
-                QR csatlakozás
-              </span>
-              <span style={pillStyle}>
-                <ScanLine size={16} />
-                Session: {sessionId}
-              </span>
-              <span style={pillStyle}>
-                <Smartphone size={16} />
-                Mobilról vezérelhető
-              </span>
-            </div>
-            <h1 style={titleStyle}>Csatlakozz a játékhoz</h1>
-            <p style={subtitleStyle}>
-              A TV-n ez az oldal látszik, a játékosok pedig a QR kód beolvasása után a saját telefonjukról tudnak belépni.
-              Ha valaki nem tudja beolvasni, a kézi link is megadható.
-            </p>
+      <div style={{
+        background: '#fff',
+        padding: 'clamp(12px, 2vw, 20px)',
+        borderRadius: '12px',
+        lineHeight: 0,
+      }}>
+        <QRCodeSVG value={sessionUrl} size={240} />
+      </div>
+
+      <div style={{ display: 'grid', gap: '12px', justifyItems: 'center', width: 'min(100%, 480px)' }}>
+        <button
+          type="button"
+          onClick={() => setShowLink(!showLink)}
+          style={{
+            width: '100%',
+            padding: 'clamp(12px, 1.5vw, 18px) clamp(24px, 3vw, 40px)',
+            borderRadius: '50px',
+            border: 'none',
+            background: '#9ed9dc',
+            opacity: 0.85,
+            color: '#000',
+            fontSize: 'clamp(0.95rem, 1.3vw, 1.15rem)',
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          {showLink ? 'Kézi link elrejtése' : 'Nem tudod beolvasni? Katt ide!'}
+        </button>
+
+        {showLink && (
+          <div style={{
+            width: '100%',
+            padding: '14px 18px',
+            borderRadius: '12px',
+            background: 'rgba(255,255,255,0.65)',
+            border: '1px dashed rgba(0,0,0,0.12)',
+            wordBreak: 'break-all',
+            fontSize: 'clamp(0.8rem, 1vw, 0.95rem)',
+            color: '#1e293b',
+            textAlign: 'center',
+          }}>
+            {sessionUrl}
           </div>
-
-          <NextLink href="/" style={qrButtonStyle}>
-            <ArrowLeft size={18} />
-            Főoldal
-          </NextLink>
-        </div>
-
-        <div style={contentStyle}>
-          <section style={boardFrameStyle}>
-            <div ref={tvBoardContainerRef} style={boardStageStyle}>
-              <span style={sessionTagStyle}>{sessionId}</span>
-
-              {placedObjects.length === 0 ? (
-                <div className="absolute inset-0 flex items-center justify-center text-slate-400" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#94a3b8' }}>
-                  Várakozunk a játékosra...
-                </div>
-              ) : (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    width: `${currentBoardSize.width}px`,
-                    height: `${currentBoardSize.height}px`,
-                    transform: `translate(-50%, -50%) scale(${tvScale * zoomLevel})`,
-                    transformOrigin: 'center center',
-                  }}
-                >
-                  {placedObjects.map((item) => {
-                    const isEyes = item.objectId === 'character-eyes';
-                    const isMouth = item.objectId === 'character-mouth';
-                    const objectSize = getObjectSize(item.objectId, item.src);
-
-                    const baseZIndex = item.objectId === CHARACTER_OBJECT_ID ? 10 : 30;
-
-                    const renderX = isEyes ? item.x + 78 : isMouth ? item.x + 68 : item.x;
-                    const renderY = isEyes ? item.y - 9 : isMouth ? item.y + 6 : item.y;
-
-                    return (
-                      <div
-                        key={item.id}
-                        style={{
-                          position: 'absolute',
-                          left: `${renderX}px`,
-                          top: `${renderY}px`,
-                          width: `${objectSize}px`,
-                          height: `${objectSize}px`,
-                          zIndex: baseZIndex,
-                        }}
-                      >
-                        <img
-                          src={item.src}
-                          alt={item.name}
-                          style={{
-                            position: 'absolute',
-                            left: 0,
-                            top: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            pointerEvents: 'none',
-                          }}
-                          draggable={false}
-                        />
-
-                        {item.eyesSrc && (
-                          <img
-                            src={item.eyesSrc}
-                            alt="Szem"
-                            style={{
-                              position: 'absolute',
-                              width: '160px',
-                              height: '160px',
-                              left: '78px',
-                              top: '-9px',
-                              pointerEvents: 'none',
-                            }}
-                            draggable={false}
-                          />
-                        )}
-
-                        {item.mouthSrc && (
-                          <img
-                            src={item.mouthSrc}
-                            alt="Száj"
-                            style={{
-                              position: 'absolute',
-                              width: '180px',
-                              height: '180px',
-                              left: '68px',
-                              top: '6px',
-                              pointerEvents: 'none',
-                            }}
-                            draggable={false}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {!isGameActive ? (
-            <aside style={qrPanelStyle}>
-              <div style={qrInfoStyle}>
-                <div style={pillsRowStyle}>
-                  <span style={pillStyle}>
-                    <QrCode size={16} />
-                    QR kód
-                  </span>
-                  <span style={pillStyle}>
-                    <Link2 size={16} />
-                    Kézi belépés
-                  </span>
-                </div>
-                <h2 style={{ margin: 0, fontSize: 'clamp(1.2rem, 1.7vw, 1.5rem)', lineHeight: 1.1, color: '#0f172a' }}>
-                  Szkenneld be, és már mehet is a játék
-                </h2>
-                <p style={{ margin: 0, color: '#334155', lineHeight: 1.55, fontSize: '0.92rem' }}>
-                  A nagy kijelzőn marad ez az oldal, a telefon pedig a vezérlő felület lesz.
-                </p>
-              </div>
-
-              <div style={qrWrapperStyle}>
-                <QRCodeSVG value={sessionUrl} size={220} />
-              </div>
-
-              <div style={qrActionsStyle}>
-                <button
-                  type="button"
-                  onClick={() => setShowLink(!showLink)}
-                  style={{
-                    ...qrButtonStyle,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {showLink ? 'Kézi link elrejtése' : 'Nem tudod beolvasni a QR kódot?'}
-                </button>
-
-                {showLink && (
-                  <div style={manualLinkPanelStyle}>
-                    <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.16em' }}>
-                      Kézi link
-                    </p>
-                    <NextLink isExternal href={sessionUrl} showAnchorIcon style={manualLinkStyle}>
-                      <ExternalLink size={16} />
-                      {sessionUrl}
-                    </NextLink>
-                  </div>
-                )}
-              </div>
-            </aside>
-          ) : (
-            <aside style={qrPanelStyle}>
-              <div style={qrInfoStyle}>
-                <div style={pillsRowStyle}>
-                  <span style={pillStyle}>
-                    <Sparkles size={16} />
-                    Játék folyamatban
-                  </span>
-                </div>
-                <h2 style={{ margin: 0, fontSize: 'clamp(1.2rem, 1.7vw, 1.5rem)', lineHeight: 1.1, color: '#0f172a' }}>
-                  A session aktív
-                </h2>
-                <p style={{ margin: 0, color: '#334155', lineHeight: 1.55, fontSize: '0.92rem' }}>
-                  A QR kódot már nem kell használni, a játékosok a saját eszközükön követik a közös játékmenetet.
-                </p>
-              </div>
-
-              <div style={{ ...manualLinkPanelStyle, borderStyle: 'solid' }}>
-                <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.16em' }}>
-                  Session állapot
-                </p>
-                <p style={{ margin: 0, color: '#0f172a', lineHeight: 1.55, fontSize: '0.92rem' }}>
-                  A TV nézet továbbra is élőben mutatja az összerakott elemeket és a játék állását.
-                </p>
-              </div>
-            </aside>
-          )}
-        </div>
-      </main>
+        )}
+      </div>
     </div>
   );
 }
