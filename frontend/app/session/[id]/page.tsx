@@ -479,7 +479,7 @@ export default function Page() {
             cursor: 'pointer',
           }}
         >
-          {showLink ? 'Kézi link elrejtése' : 'Nem tudod beolvasni? Katt ide!'}
+          {showLink ? 'Link elrejtése' : 'Nem tudod beolvasni? Katt ide!'}
         </button>
 
         {showLink && (
@@ -487,7 +487,7 @@ export default function Page() {
             width: '100%',
             padding: '14px 18px',
             borderRadius: '12px',
-            background: 'rgba(255,255,255,0.65)',
+            background: '#9ed9dc',
             border: '1px dashed rgba(0,0,0,0.12)',
             wordBreak: 'break-all',
             fontSize: 'clamp(0.8rem, 1vw, 0.95rem)',

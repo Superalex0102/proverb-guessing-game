@@ -64,10 +64,19 @@ export default function TvLandingPage() {
 
   const logoStyle: React.CSSProperties = {
     position: 'absolute',
-    top: 'clamp(16px, 3vw, 40px)',
-    left: 'clamp(16px, 3vw, 40px)',
-    width: 'clamp(60px, 8vw, 100px)',
+    left: '0',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: 'clamp(80px, 10vw, 140px)',
     height: 'auto',
+  };
+
+  const titleRowStyle: React.CSSProperties = {
+    position: 'relative',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   };
 
   const contentStyle: React.CSSProperties = {
@@ -79,8 +88,8 @@ export default function TvLandingPage() {
   };
 
   const titlePillStyle: React.CSSProperties = {
-    width: 'min(100%, 720px)',
-    padding: 'clamp(16px, 2vw, 28px) clamp(28px, 4vw, 52px)',
+    width: 'min(100%, 360px)',
+    padding: 'clamp(4px, 0.6vw, 8px) clamp(16px, 2vw, 28px)',
     borderRadius: '50px',
     background: '#9ed9dc',
     boxShadow: '0 8px 24px rgba(111, 185, 185, 0.35), inset 0 1px 0 rgba(255,255,255,0.5)',
@@ -133,8 +142,8 @@ export default function TvLandingPage() {
   };
 
   const ctaStyle: React.CSSProperties = {
-    width: 'min(100%, 480px)',
-    padding: 'clamp(16px, 2vw, 26px) clamp(32px, 5vw, 64px)',
+    width: 'min(100%, 360px)',
+    padding: 'clamp(6px, 0.8vw, 12px) clamp(16px, 2vw, 28px)',
     borderRadius: '50px',
     border: 'none',
     background: '#9ed9dc',
@@ -149,19 +158,20 @@ export default function TvLandingPage() {
 
   return (
     <div style={pageStyle}>
-      <div style={logoStyle}>
-        <img
-          src="/images/ui/landing_page/logo.svg"
-          alt="Képmutató Társasjáték"
-          style={{ width: '100%', height: 'auto', display: 'block' }}
-        />
-      </div>
-
       <main style={contentStyle}>
-        <header style={titlePillStyle}>
-          <h1 style={{ margin: 0, fontSize: 'inherit', fontWeight: 'inherit', letterSpacing: 'inherit' }}>
-            Játék menete
-          </h1>
+        <header style={titleRowStyle}>
+          <div style={logoStyle}>
+            <img
+              src="/images/ui/landing_page/logo.svg"
+              alt="Képmutató Társasjáték"
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+            />
+          </div>
+          <div style={titlePillStyle}>
+            <h1 style={{ margin: 0, fontSize: 'inherit', fontWeight: 'inherit', letterSpacing: 'inherit' }}>
+              Játék menete
+            </h1>
+          </div>
         </header>
 
         <section style={stepsListStyle} aria-label="Játék lépései">
