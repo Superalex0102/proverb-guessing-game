@@ -10,8 +10,12 @@ const bricolageGrotesque = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: 'Proverb Guessing Game',
-  description: 'Multiplayer proverb guessing game.',
+  title: 'Képmutató',
+  description: 'Képmutató társasjáték: Találd ki a közmondást a képek alapján!',
+  icons: {
+    icon: '/images/ui/landing_page/logo.svg',
+    shortcut: '/images/ui/landing_page/logo.svg',
+  },
 };
 
 export default function RootLayout({
