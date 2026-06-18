@@ -64,7 +64,7 @@ export default function TvLandingPage() {
 
   const logoStyle: React.CSSProperties = {
     position: 'absolute',
-    left: '0',
+    left: 'clamp(-48px, -3vw, -16px)',
     top: '50%',
     transform: 'translateY(-50%)',
     width: 'clamp(80px, 10vw, 140px)',
@@ -88,7 +88,7 @@ export default function TvLandingPage() {
   };
 
   const titlePillStyle: React.CSSProperties = {
-    width: 'min(100%, 360px)',
+    width: 'min(100%, 500px)',
     padding: 'clamp(4px, 0.6vw, 8px) clamp(16px, 2vw, 28px)',
     borderRadius: '50px',
     background: '#9ed9dc',
