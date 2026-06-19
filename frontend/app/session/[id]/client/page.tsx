@@ -126,12 +126,12 @@ export default function Page() {
                 overflow: 'hidden',
             }}>
                 {/* Reload icon with top spacing */}
-                <div style={{ marginTop: '14vh', flexShrink: 0 }}>
+                <div style={{ marginTop: '22vh', flexShrink: 0 }}>
                     <img
                         src="/images/ui/landscape_warning/reload-icon.svg"
                         alt=""
                         style={{
-                            width: '120px',
+                            width: '100px',
                             height: 'auto',
                             display: 'block',
                         }}
@@ -156,27 +156,6 @@ export default function Page() {
                     Kapcsold be az elforgatást a telefonodon!
                     <br />
                     Ezt követően rögtön folytatódik a játék!
-                </div>
-
-                {/* Character at the bottom-left, rotated 45deg */}
-                <div style={{
-                    position: 'absolute',
-                    bottom: '-18%',
-                    left: '-50%',
-                    transform: 'rotate(10deg)',
-                    transformOrigin: 'bottom left',
-                    width: '110%',
-                    pointerEvents: 'none',
-                }}>
-                    <img
-                        src="/images/ui/landscape_warning/character.svg"
-                        alt=""
-                        style={{
-                            width: '130%',
-                            height: 'auto',
-                            display: 'block',
-                        }}
-                    />
                 </div>
             </div>
         );
