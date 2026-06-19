@@ -483,19 +483,25 @@ export default function Page() {
         </button>
 
         {showLink && (
-          <div style={{
-            width: '100%',
-            padding: '14px 18px',
-            borderRadius: '12px',
-            background: '#9ed9dc',
-            border: '1px dashed rgba(0,0,0,0.12)',
-            wordBreak: 'break-all',
-            fontSize: 'clamp(0.8rem, 1vw, 0.95rem)',
-            color: '#1e293b',
-            textAlign: 'center',
-          }}>
+          <a
+            href={sessionUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              width: '100%',
+              padding: '14px 18px',
+              borderRadius: '12px',
+              background: '#9ed9dc',
+              border: '1px dashed rgba(0,0,0,0.12)',
+              wordBreak: 'break-all',
+              fontSize: 'clamp(0.8rem, 1vw, 0.95rem)',
+              color: '#1e293b',
+              textAlign: 'center',
+              textDecoration: 'none',
+            }}
+          >
             {sessionUrl}
-          </div>
+          </a>
         )}
       </div>
     </div>

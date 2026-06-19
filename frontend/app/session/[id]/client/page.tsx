@@ -119,88 +119,64 @@ export default function Page() {
                 position: 'fixed',
                 inset: 0,
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
+                height: '100dvh',
+                background: '#d7eff5',
                 overflow: 'hidden',
-                background: '#dbf5f9',
-                color: '#0f172a',
-                padding: '16px',
-                boxSizing: 'border-box',
             }}>
+                {/* Reload icon with top spacing */}
+                <div style={{ marginTop: '14vh', flexShrink: 0 }}>
+                    <img
+                        src="/images/ui/landscape_warning/reload-icon.svg"
+                        alt=""
+                        style={{
+                            width: '120px',
+                            height: 'auto',
+                            display: 'block',
+                        }}
+                    />
+                </div>
+
+                {/* Instruction box */}
+                <div style={{
+                    background: '#A2DEE2',
+                    borderRadius: '24px',
+                    padding: '16px 32px',
+                    marginTop: '5vh',
+                    marginLeft: '4px',
+                    marginRight: '4px',
+                    textAlign: 'center',
+                    color: '#0f172a',
+                    fontSize: '17px',
+                    lineHeight: 1.5,
+                    fontWeight: 600,
+                    flexShrink: 0,
+                }}>
+                    Kapcsold be az elforgatást a telefonodon!
+                    <br />
+                    Ezt követően rögtön folytatódik a játék!
+                </div>
+
+                {/* Character at the bottom-left, rotated 45deg */}
                 <div style={{
                     position: 'absolute',
-                    inset: 0,
-                    backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(127, 182, 183, 0.16) 0, rgba(127, 182, 183, 0.16) 12%, transparent 12%), radial-gradient(circle at 80% 15%, rgba(13, 148, 136, 0.12) 0, rgba(13, 148, 136, 0.12) 10%, transparent 10%), radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.08) 0, rgba(59, 130, 246, 0.08) 14%, transparent 14%)',
-                    opacity: 0.85,
+                    bottom: '-18%',
+                    left: '-50%',
+                    transform: 'rotate(10deg)',
+                    transformOrigin: 'bottom left',
+                    width: '110%',
                     pointerEvents: 'none',
-                }} />
-
-                <div style={{
-                    position: 'relative',
-                    width: 'min(92vw, 760px)',
-                    minHeight: 'min(72vh, 520px)',
-                    padding: '26px 22px 22px',
-                    borderRadius: '24px',
-                    backgroundImage: "url('/images/ui/kozmondasos_panel.svg')",
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'center',
-                    backgroundSize: '100% 100%',
-                    boxShadow: '0 18px 48px rgba(15, 23, 42, 0.14)',
-                    textAlign: 'center',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '18px',
                 }}>
-                    <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '92px',
-                        height: '92px',
-                        borderRadius: '9999px',
-                        background: 'linear-gradient(180deg, #7fb6b7 0%, #0d9488 100%)',
-                        boxShadow: '0 10px 24px rgba(13, 148, 136, 0.22)',
-                        color: '#fff',
-                        fontSize: '40px',
-                        fontWeight: 800,
-                        border: '4px solid rgba(255, 255, 255, 0.55)',
-                    }}>
-                        ↻
-                    </div>
-
-                    <h1 style={{
-                        margin: 0,
-                        fontSize: 'clamp(30px, 4.2vw, 52px)',
-                        lineHeight: 1,
-                        letterSpacing: '0.02em',
-                        fontWeight: 800,
-                        color: '#0f172a',
-                    }}>
-                        Landscape mód szükséges
-                    </h1>
-
-                    <p style={{
-                        margin: '0',
-                        fontSize: 'clamp(16px, 2vw, 24px)',
-                        lineHeight: 1.45,
-                        color: '#1e293b',
-                        fontWeight: 600,
-                        maxWidth: '34ch',
-                    }}>
-                        A játék kizárólag vízszintes, landscape nézetben játszható.
-                    </p>
-
-                    <p style={{
-                        margin: '0',
-                        fontSize: 'clamp(14px, 1.7vw, 18px)',
-                        lineHeight: 1.5,
-                        color: '#475569',
-                        maxWidth: '44ch',
-                    }}>
-                        Forgasd el a készüléket landscape irányba, és amint vízszintes lesz a képernyő, a játék automatikusan megjelenik.
-                    </p>
+                    <img
+                        src="/images/ui/landscape_warning/character.svg"
+                        alt=""
+                        style={{
+                            width: '130%',
+                            height: 'auto',
+                            display: 'block',
+                        }}
+                    />
                 </div>
             </div>
         );
