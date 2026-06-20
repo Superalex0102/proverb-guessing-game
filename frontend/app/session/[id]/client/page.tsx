@@ -126,7 +126,7 @@ export default function Page() {
                 overflow: 'hidden',
             }}>
                 {/* Reload icon with top spacing */}
-                <div style={{ marginTop: '22vh', flexShrink: 0 }}>
+                <div style={{ marginTop: '40%', flexShrink: 0 }}>
                     <img
                         src="/images/ui/landscape_warning/reload-icon.svg"
                         alt=""
@@ -146,7 +146,7 @@ export default function Page() {
                     marginTop: '5vh',
                     marginLeft: '4px',
                     marginRight: '4px',
-                    textAlign: 'center',
+                    textAlign: 'left',
                     color: '#0f172a',
                     fontSize: '17px',
                     lineHeight: 1.5,
